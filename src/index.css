@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #e5e5e7;
+  font-family: 'Barlow', system-ui, sans-serif;
+  color: #1d1f20;
+}
+
+.font-heading {
+  font-family: '"Barlow Condensed"', system-ui, sans-serif;
+}
+
+.grid-paper {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.eyebrow {
+  font-family: '"Barlow Condensed"', system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
