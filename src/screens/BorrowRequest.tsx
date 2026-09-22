@@ -31,7 +31,7 @@ export default function BorrowRequest() {
     return (
       <Screen withNav={false} scroll={false}>
         <TopBar title="Borrow Request" onBack={() => nav('/closets-near-me')} />
-        <div className="flex h-full flex-col items-center justify-center px-8 text-center">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-8 text-center">
           <div className="font-heading text-2xl font-semibold uppercase">Request sent</div>
           <p className="mt-2 text-sm text-neutral-600">
             {owner.name} will see this in her Borrows tab. You'll get a nudge when she responds.

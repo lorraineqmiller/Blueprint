@@ -50,7 +50,7 @@ export default function AddItem() {
     return (
       <Screen withNav={false} scroll={false}>
         <TopBar title="Add Item" onBack={() => setShowManual(false)} />
-        <div className="flex h-full flex-col justify-between px-6 py-6">
+        <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto px-6 py-6">
           <div className="space-y-4">
             <div>
               <Eyebrow className="mb-1">Item name</Eyebrow>

@@ -15,7 +15,7 @@ export default function ProfileSetup() {
   return (
     <Screen withNav={false} scroll={false}>
       <TopBar title="Profile Setup" onBack={() => nav(-1)} />
-      <div className="flex h-full flex-col justify-between px-6 py-6">
+      <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto px-6 py-6">
         <div className="space-y-6">
           <div className="flex items-center gap-4">
             <ImagePlaceholder className="h-16 w-16 rounded-full" />

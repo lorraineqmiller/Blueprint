@@ -14,7 +14,7 @@ export default function Join() {
   return (
     <Screen withNav={false} scroll={false}>
       <TopBar title="Join" onBack={() => nav(-1)} />
-      <div className="flex h-full flex-col justify-between px-6 py-6">
+      <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto px-6 py-6">
         <div className="space-y-5">
           <div>
             <h2 className="font-heading text-2xl font-semibold uppercase">Join the Blueprint</h2>

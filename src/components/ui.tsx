@@ -26,7 +26,7 @@ export function PrimaryButton({
 }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
-      className={`eyebrow w-full rounded-md bg-accent-600 py-4 text-center text-sm tracking-wider text-white transition active:scale-[0.98] disabled:opacity-40 ${className}`}
+      className={`eyebrow w-full rounded-md bg-accent-700 py-4 text-center text-sm tracking-wider text-white shadow-sm transition active:scale-[0.98] disabled:bg-neutral-300 disabled:text-neutral-500 disabled:shadow-none ${className}`}
       {...rest}
     >
       {children}

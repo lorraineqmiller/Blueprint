@@ -67,7 +67,7 @@ export function Screen({
   return (
     <div className="mx-auto flex h-[100dvh] w-full max-w-[430px] flex-col overflow-hidden bg-paper font-body text-ink shadow-2xl sm:h-[min(860px,100dvh)] sm:rounded-[2.5rem]">
       {withStatusBar && <StatusBar />}
-      <div className={`flex-1 ${scroll ? 'overflow-y-auto' : 'overflow-hidden'}`}>{children}</div>
+      <div className={`flex flex-1 flex-col ${scroll ? 'overflow-y-auto' : 'overflow-hidden'}`}>{children}</div>
       {withNav && <BottomNav />}
     </div>
   )

@@ -25,7 +25,7 @@ export default function NewFitCheck() {
     return (
       <Screen withNav={false} scroll={false}>
         <TopBar title="New Fit Check" onBack={() => nav('/chats')} />
-        <div className="flex h-full flex-col justify-between px-6 py-6">
+        <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto px-6 py-6">
           <div className="space-y-4">
             <div>
               <Eyebrow className="mb-1">Event</Eyebrow>
@@ -66,7 +66,7 @@ export default function NewFitCheck() {
   return (
     <Screen withNav={false} scroll={false}>
       <TopBar title="New Fit Check" onBack={() => setStep('details')} />
-      <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <p className="eyebrow text-xs text-neutral-600">Option A — tap pieces from your closet</p>
           <div className="mt-2 grid grid-cols-4 gap-2">
