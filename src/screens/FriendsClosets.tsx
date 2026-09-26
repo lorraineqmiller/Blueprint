@@ -80,7 +80,16 @@ export default function FriendsClosets() {
               </Card>
             </button>
           ))}
-          {lendable.length === 0 && isBackendEnabled && (
+          {lendable.length === 0 && isBackendEnabled && people.length === 0 && (
+            <button
+              onClick={() => nav('/friends')}
+              className="block w-full rounded-md border border-dashed border-accent-300 bg-accent-100 p-4 text-left"
+            >
+              <div className="text-sm font-semibold text-accent-700">You haven't added any friends yet</div>
+              <p className="mt-1 text-xs text-ink">Find people on Blueprint to start browsing lendable closets.</p>
+            </button>
+          )}
+          {lendable.length === 0 && isBackendEnabled && people.length > 0 && (
             <p className="text-sm text-neutral-500">
               Nothing here yet — once a friend marks something lendable, it'll show up in this list.
             </p>

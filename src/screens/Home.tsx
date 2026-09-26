@@ -4,6 +4,7 @@ import { Badge, Eyebrow, ImagePlaceholder } from '../components/ui'
 import { useStore } from '../store'
 import { useMyItems } from '../lib/selectors'
 import { closetImpact } from '../lib/impact'
+import { isBackendEnabled } from '../lib/supabaseClient'
 
 export default function Home() {
   const nav = useNavigate()
@@ -93,28 +94,43 @@ export default function Home() {
               See all
             </button>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {lendableFromFriends.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => nav(`/borrow/${item.id}`)}
-                className="w-28 shrink-0 overflow-hidden rounded-md border border-neutral-300 bg-white text-left"
-              >
-                <div className="relative">
-                  <ImagePlaceholder className="h-28 w-full" />
-                  <span className="eyebrow absolute left-1 top-1 rounded-sm bg-accent-600 px-1.5 py-0.5 text-[9px] text-white">
-                    Lendable
-                  </span>
-                </div>
-                <div className="px-2 py-1.5">
-                  <div className="truncate text-xs font-semibold">{item.name}</div>
-                  <div className="truncate text-[10px] text-neutral-600">
-                    {people.find((p) => p.id === item.ownerId)?.name}
+          {isBackendEnabled && people.length === 0 ? (
+            <button
+              onClick={() => nav('/friends')}
+              className="block w-full rounded-md border border-dashed border-accent-300 bg-accent-100 p-4 text-left"
+            >
+              <div className="text-sm font-semibold text-accent-700">Add friends to see their closets</div>
+              <p className="mt-1 text-xs text-ink">
+                Once you're connected, their lendable pieces show up here — the closer, the better.
+              </p>
+            </button>
+          ) : (
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {lendableFromFriends.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => nav(`/borrow/${item.id}`)}
+                  className="w-28 shrink-0 overflow-hidden rounded-md border border-neutral-300 bg-white text-left"
+                >
+                  <div className="relative">
+                    <ImagePlaceholder className="h-28 w-full" />
+                    <span className="eyebrow absolute left-1 top-1 rounded-sm bg-accent-600 px-1.5 py-0.5 text-[9px] text-white">
+                      Lendable
+                    </span>
                   </div>
-                </div>
-              </button>
-            ))}
-          </div>
+                  <div className="px-2 py-1.5">
+                    <div className="truncate text-xs font-semibold">{item.name}</div>
+                    <div className="truncate text-[10px] text-neutral-600">
+                      {people.find((p) => p.id === item.ownerId)?.name}
+                    </div>
+                  </div>
+                </button>
+              ))}
+              {lendableFromFriends.length === 0 && isBackendEnabled && (
+                <p className="text-sm text-neutral-500">Nothing lendable from friends yet.</p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </Screen>
