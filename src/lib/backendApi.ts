@@ -510,3 +510,17 @@ export function subscribeToChat(chatId: string, onChange: () => void) {
     db().removeChannel(channel)
   }
 }
+
+// Live friend requests/acceptances/declines involving this user — either
+// side of a friendships row, since a change either way (a new request in,
+// or the other person accepting one you sent) should refresh the screen.
+export function subscribeToFriendships(userId: string, onChange: () => void) {
+  const channel = db()
+    .channel(`friendships-${userId}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships', filter: `requester_id=eq.${userId}` }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships', filter: `addressee_id=eq.${userId}` }, onChange)
+    .subscribe()
+  return () => {
+    db().removeChannel(channel)
+  }
+}

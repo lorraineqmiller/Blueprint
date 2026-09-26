@@ -14,10 +14,12 @@ export default function FriendsList() {
   const refreshFriendData = useStore((s) => s.refreshFriendData)
   const sendFriendRequest = useStore((s) => s.sendFriendRequest)
   const respondToFriendRequest = useStore((s) => s.respondToFriendRequest)
+  const subscribeToFriendsRealtime = useStore((s) => s.subscribeToFriendsRealtime)
 
   useEffect(() => {
     refreshFriendData()
-  }, [refreshFriendData])
+    return subscribeToFriendsRealtime()
+  }, [refreshFriendData, subscribeToFriendsRealtime])
 
   return (
     <Screen withNav={false}>

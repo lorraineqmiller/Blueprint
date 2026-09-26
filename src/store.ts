@@ -52,6 +52,9 @@ interface BlueprintState {
   refreshFriendData: () => void
   sendFriendRequest: (personId: string) => void
   respondToFriendRequest: (personId: string, decision: 'accepted' | 'declined') => void
+  // Live-updates friend requests/friends while the Friends screen is open;
+  // returns an unsubscribe function. No-op (returns a no-op) locally.
+  subscribeToFriendsRealtime: () => () => void
 
   // onboarding
   completeOnboarding: () => void
@@ -190,10 +193,7 @@ export const useStore = create<BlueprintState>()(
         if (!isBackendEnabled) return
         const userId = get().authUserId
         if (!userId) return
-        set((s) => ({
-          friendRequestsOutgoingIds: [...s.friendRequestsOutgoingIds, personId],
-          discoverablePeople: s.discoverablePeople.filter((p) => p.id !== personId),
-        }))
+        set((s) => ({ friendRequestsOutgoingIds: [...s.friendRequestsOutgoingIds, personId] }))
         backend
           .sendFriendRequest(userId, personId)
           .catch((e) => report('sendFriendRequest', e))
@@ -210,6 +210,12 @@ export const useStore = create<BlueprintState>()(
         backend
           .respondToFriendRequest(personId, userId, decision)
           .catch((e) => report('respondToFriendRequest', e))
+      },
+      subscribeToFriendsRealtime: () => {
+        if (!isBackendEnabled) return () => {}
+        const userId = get().authUserId
+        if (!userId) return () => {}
+        return backend.subscribeToFriendships(userId, () => get().refreshFriendData())
       },
 
       completeOnboarding: () => {
