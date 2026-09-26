@@ -22,7 +22,7 @@ export default function Splash() {
         <div className="mt-14 w-full max-w-[320px] space-y-4">
           <PrimaryButton onClick={() => nav('/join')}>Get Started</PrimaryButton>
           <button
-            onClick={() => nav('/home')}
+            onClick={() => nav('/login')}
             className="eyebrow w-full py-2 text-xs tracking-wide text-white/60"
           >
             I already have an account

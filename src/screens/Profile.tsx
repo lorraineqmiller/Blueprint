@@ -4,6 +4,7 @@ import { ImagePlaceholder } from '../components/ui'
 import { useStore } from '../store'
 import { useMyItems } from '../lib/selectors'
 import { closetImpact } from '../lib/impact'
+import { isBackendEnabled } from '../lib/supabaseClient'
 
 export default function Profile() {
   const nav = useNavigate()
@@ -12,6 +13,7 @@ export default function Profile() {
   const requests = useStore((s) => s.borrowRequests)
   const people = useStore((s) => s.people)
   const setPublic = useStore((s) => s.setPublic)
+  const signOut = useStore((s) => s.signOut)
   const impact = closetImpact(items)
 
   const borrowsCount = requests.filter((r) => r.requesterId === user.id || r.ownerId === user.id).length
@@ -95,6 +97,18 @@ export default function Profile() {
             {user.isPublic ? 'Public' : 'Private'}
           </button>
         </div>
+
+        {isBackendEnabled && (
+          <button
+            onClick={async () => {
+              await signOut()
+              nav('/')
+            }}
+            className="eyebrow mt-4 w-full py-2 text-center text-xs tracking-wide text-neutral-500"
+          >
+            Sign out
+          </button>
+        )}
       </div>
     </Screen>
   )
