@@ -333,16 +333,24 @@ export async function fetchOutgoingRequestIds(userId: string): Promise<string[]>
 export async function fetchDiscoverablePeople(userId: string): Promise<Person[]> {
   const { data: existing, error: e1 } = await db()
     .from('friendships')
-    .select('requester_id, addressee_id')
+    .select('requester_id, addressee_id, status')
     .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
   if (e1) throw e1
-  const connectedIds = new Set<string>()
-  for (const r of existing as { requester_id: string; addressee_id: string }[]) {
-    connectedIds.add(r.requester_id === userId ? r.addressee_id : r.requester_id)
+  // Excludes accepted friends (already connected) and anyone who requested
+  // *you* (they belong in Friend Requests, not Suggestions). Someone *you*
+  // sent a pending request to stays in the list — the UI shows them as
+  // "Requested" via friendRequestsOutgoingIds — so a request doesn't make
+  // the suggestion disappear, it just changes the button.
+  const excludeIds = new Set<string>()
+  for (const r of existing as { requester_id: string; addressee_id: string; status: string }[]) {
+    const otherId = r.requester_id === userId ? r.addressee_id : r.requester_id
+    if (r.status === 'accepted' || (r.status === 'pending' && r.addressee_id === userId)) {
+      excludeIds.add(otherId)
+    }
   }
   const { data, error } = await db().from('profiles').select('*').eq('is_public', true).neq('id', userId)
   if (error) throw error
-  return (data as ProfileRow[]).filter((p) => !connectedIds.has(p.id)).map(profileToPerson)
+  return (data as ProfileRow[]).filter((p) => !excludeIds.has(p.id)).map(profileToPerson)
 }
 
 export async function sendFriendRequest(requesterId: string, addresseeId: string) {
