@@ -1,18 +1,17 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
-import { Photo, PrimaryButton, SegmentedControl, StatTile } from '../components/ui'
+import { Photo, PrimaryButton, StatTile } from '../components/ui'
 import { useItemById, usePersonById } from '../lib/selectors'
 import { borrowImpact } from '../lib/impact'
 import { proximityLabel } from '../lib/proximity'
 import { useStore } from '../store'
-import type { BorrowRequest as BorrowRequestType } from '../types'
 
-const noteOptions = [
-  'gig at Baby’s All Right — will guard them with my life',
-  'formal on Friday, back to you Saturday morning',
-  'warehouse party, returning them clean Sunday',
-]
+function formatCustomDate(isoDate: string) {
+  if (!isoDate) return ''
+  const d = new Date(`${isoDate}T00:00:00`)
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+}
 
 export default function BorrowRequest() {
   const nav = useNavigate()
@@ -22,12 +21,16 @@ export default function BorrowRequest() {
   const sendBorrowRequest = useStore((s) => s.sendBorrowRequest)
   const user = useStore((s) => s.user)
 
-  const [when, setWhen] = useState<BorrowRequestType['whenNeeded']>('This Weekend')
-  const [note, setNote] = useState(noteOptions[0])
+  const [when, setWhen] = useState<'ASAP' | 'date'>('ASAP')
+  const [customDate, setCustomDate] = useState('')
+  const [note, setNote] = useState('')
   const [sent, setSent] = useState(false)
+
+  const today = new Date().toISOString().slice(0, 10)
 
   if (!item || !owner) return null
   const impact = borrowImpact(item.priceCents)
+  const whenNeeded = when === 'ASAP' ? 'ASAP' : formatCustomDate(customDate)
 
   if (sent) {
     return (
@@ -69,32 +72,44 @@ export default function BorrowRequest() {
 
         <div className="mt-5">
           <p className="eyebrow mb-2 text-xs text-neutral-600">When do you need it?</p>
-          <SegmentedControl
-            value={when}
-            onChange={setWhen}
-            options={[
-              { value: 'Tonight', label: 'Tonight' },
-              { value: 'This Weekend', label: 'This Weekend' },
-              { value: 'Next Week', label: 'Next Week' },
-            ]}
-          />
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setWhen('ASAP')}
+              className={`eyebrow rounded-md border py-3 text-xs tracking-wide transition ${
+                when === 'ASAP' ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white text-ink'
+              }`}
+            >
+              ASAP
+            </button>
+            <button
+              onClick={() => setWhen('date')}
+              className={`eyebrow rounded-md border py-3 text-xs tracking-wide transition ${
+                when === 'date' ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white text-ink'
+              }`}
+            >
+              Pick a date
+            </button>
+          </div>
+          {when === 'date' && (
+            <input
+              type="date"
+              min={today}
+              value={customDate}
+              onChange={(e) => setCustomDate(e.target.value)}
+              className="mt-2 w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+            />
+          )}
         </div>
 
         <div className="mt-5">
           <p className="eyebrow mb-2 text-xs text-neutral-600">Add a note</p>
-          <div className="space-y-2">
-            {noteOptions.map((n) => (
-              <button
-                key={n}
-                onClick={() => setNote(n)}
-                className={`w-full rounded-md border p-3 text-left text-sm ${
-                  note === n ? 'border-accent-600 bg-accent-100' : 'border-neutral-300 bg-white'
-                }`}
-              >
-                "{n}"
-              </button>
-            ))}
-          </div>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Let them know what it's for and when you'll return it..."
+            rows={3}
+            className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 text-sm outline-none focus:border-accent-600"
+          />
         </div>
 
         <div className="mt-5 rounded-md border border-neutral-300 bg-white p-4">
@@ -112,8 +127,9 @@ export default function BorrowRequest() {
 
         <PrimaryButton
           className="mt-5"
+          disabled={!note.trim() || (when === 'date' && !customDate)}
           onClick={() => {
-            sendBorrowRequest({ itemId: item.id, whenNeeded: when, note })
+            sendBorrowRequest({ itemId: item.id, whenNeeded, note: note.trim() })
             setSent(true)
           }}
         >

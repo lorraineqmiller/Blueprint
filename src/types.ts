@@ -39,7 +39,7 @@ export interface BorrowRequest {
   ownerId: string
   requesterId: string
   status: BorrowStatus
-  whenNeeded: 'Tonight' | 'This Weekend' | 'Next Week'
+  whenNeeded: string // preset label ("Tonight") or a formatted custom date
   note: string
   createdAt: string
   dateRangeLabel: string
