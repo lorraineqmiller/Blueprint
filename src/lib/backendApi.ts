@@ -62,6 +62,8 @@ type ProfileRow = {
   handle: string
   school: string
   class_year: string
+  building: string
+  floor: string
   is_public: boolean
   is_premium: boolean
   has_completed_onboarding: boolean
@@ -76,6 +78,8 @@ function profileToUser(row: ProfileRow): CurrentUser {
     handle: row.handle,
     school: row.school,
     classYear: row.class_year,
+    building: row.building,
+    floor: row.floor,
     isPublic: row.is_public,
     isPremium: row.is_premium,
     hasCompletedOnboarding: row.has_completed_onboarding,
@@ -91,7 +95,8 @@ function profileToPerson(row: ProfileRow): Person {
     handle: row.handle,
     school: row.school,
     classYear: row.class_year,
-    distanceLabel: 'On campus', // no real geo yet — proximity is still flavor text
+    building: row.building,
+    floor: row.floor,
     isPublic: row.is_public,
   }
 }

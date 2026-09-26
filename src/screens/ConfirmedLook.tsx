@@ -2,6 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
 import { Badge, ImagePlaceholder, PrimaryButton } from '../components/ui'
 import { useStore } from '../store'
+import { proximityLabel } from '../lib/proximity'
 
 export default function ConfirmedLook() {
   const nav = useNavigate()
@@ -51,7 +52,7 @@ export default function ConfirmedLook() {
                 <div className="px-2 py-2">
                   <div className="truncate text-xs font-semibold uppercase">{item.name}</div>
                   <div className="truncate text-[10px] text-neutral-600">
-                    {owned ? 'Your closet' : `${owner?.name} · ${owner?.distanceLabel}`}
+                    {owned || !owner ? 'Your closet' : `${owner.name} · ${proximityLabel(user, owner)}`}
                   </div>
                 </div>
               </div>
@@ -63,8 +64,11 @@ export default function ConfirmedLook() {
           <div className="mt-5 rounded-md border border-accent-300 bg-accent-100 p-4">
             <Badge tone="accent">Missing one piece</Badge>
             <p className="mt-2 text-sm text-ink">
-              The look needs the {toBorrow[0].name.toLowerCase()}. {people.find((p) => p.id === toBorrow[0].ownerId)?.name}{' '}
-              has them, {people.find((p) => p.id === toBorrow[0].ownerId)?.distanceLabel} away.
+              The look needs the {toBorrow[0].name.toLowerCase()}.{' '}
+              {(() => {
+                const missingOwner = people.find((p) => p.id === toBorrow[0].ownerId)
+                return missingOwner ? `${missingOwner.name} has them, ${proximityLabel(user, missingOwner)}.` : null
+              })()}
             </p>
             <PrimaryButton className="mt-3" onClick={() => nav(`/borrow/${toBorrow[0].id}`)}>
               Request to borrow

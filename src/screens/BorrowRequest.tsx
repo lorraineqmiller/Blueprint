@@ -4,6 +4,7 @@ import { Screen, TopBar } from '../components/Shell'
 import { ImagePlaceholder, PrimaryButton, SegmentedControl, StatTile } from '../components/ui'
 import { useItemById, usePersonById } from '../lib/selectors'
 import { borrowImpact } from '../lib/impact'
+import { proximityLabel } from '../lib/proximity'
 import { useStore } from '../store'
 import type { BorrowRequest as BorrowRequestType } from '../types'
 
@@ -19,6 +20,7 @@ export default function BorrowRequest() {
   const item = useItemById(itemId)
   const owner = usePersonById(item?.ownerId)
   const sendBorrowRequest = useStore((s) => s.sendBorrowRequest)
+  const user = useStore((s) => s.user)
 
   const [when, setWhen] = useState<BorrowRequestType['whenNeeded']>('This Weekend')
   const [note, setNote] = useState(noteOptions[0])
@@ -49,7 +51,7 @@ export default function BorrowRequest() {
       <TopBar title="Borrow Request" onBack={() => nav(-1)} />
       <div className="px-5 py-5">
         <p className="eyebrow text-xs text-neutral-600">
-          From {owner.name} · {owner.distanceLabel}
+          From {owner.name} · {proximityLabel(user, owner)}
         </p>
 
         <div className="mt-3 flex gap-3 rounded-md border border-neutral-300 bg-white p-3">

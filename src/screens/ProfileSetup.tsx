@@ -11,6 +11,8 @@ export default function ProfileSetup() {
   const setPublic = useStore((s) => s.setPublic)
   const completeOnboarding = useStore((s) => s.completeOnboarding)
   const [classYear, setClassYear] = useState(user.classYear)
+  const [building, setBuilding] = useState(user.building)
+  const [floor, setFloor] = useState(user.floor)
 
   return (
     <Screen withNav={false} scroll={false}>
@@ -31,6 +33,31 @@ export default function ProfileSetup() {
               onChange={(e) => setClassYear(e.target.value)}
               className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
             />
+          </div>
+          <div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <Eyebrow className="mb-1">Building</Eyebrow>
+                <input
+                  value={building}
+                  onChange={(e) => setBuilding(e.target.value)}
+                  placeholder="Sulzberger Hall"
+                  className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+                />
+              </div>
+              <div className="w-24">
+                <Eyebrow className="mb-1">Floor</Eyebrow>
+                <input
+                  value={floor}
+                  onChange={(e) => setFloor(e.target.value)}
+                  placeholder="7"
+                  className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+                />
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-neutral-600">
+              Used to show friends how close your closet is — never anything more precise than this.
+            </p>
           </div>
           <div>
             <Eyebrow className="mb-2">Profile visibility</Eyebrow>
@@ -61,7 +88,7 @@ export default function ProfileSetup() {
         </div>
         <PrimaryButton
           onClick={() => {
-            setProfile({ classYear })
+            setProfile({ classYear, building, floor })
             completeOnboarding()
             nav('/home')
           }}

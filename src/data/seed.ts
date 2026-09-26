@@ -15,6 +15,8 @@ export const seedUser: CurrentUser = {
   handle: '@xoxoannayang',
   school: 'Columbia University',
   classYear: 'Class of 2028',
+  building: 'John Jay Hall',
+  floor: '10',
   isPublic: true,
   isPremium: false,
   hasCompletedOnboarding: false,
@@ -23,10 +25,10 @@ export const seedUser: CurrentUser = {
 }
 
 export const seedPeople: Person[] = [
-  { id: 'priya', name: 'Priya R.', handle: '@priyar', school: 'Columbia University', classYear: 'Class of 2027', distanceLabel: '6 min · 113th', isPublic: true },
-  { id: 'tessa', name: 'Tessa L.', handle: '@tessal', school: 'Barnard College', classYear: 'Class of 2028', distanceLabel: '1 min · Barnard Quad', isPublic: true },
-  { id: 'amara', name: 'Amara O.', handle: '@amarao', school: 'Columbia University', classYear: 'Class of 2026', distanceLabel: '2 min · Plimpton', isPublic: true },
-  { id: 'jules', name: 'Jules T.', handle: '@julest', school: 'Columbia University', classYear: 'Class of 2028', distanceLabel: '4 min · 116th', isPublic: true },
+  { id: 'priya', name: 'Priya R.', handle: '@priyar', school: 'Columbia University', classYear: 'Class of 2027', building: 'John Jay Hall', floor: '10', isPublic: true },
+  { id: 'tessa', name: 'Tessa L.', handle: '@tessal', school: 'Barnard College', classYear: 'Class of 2028', building: 'Sulzberger Hall', floor: '7', isPublic: true },
+  { id: 'amara', name: 'Amara O.', handle: '@amarao', school: 'Columbia University', classYear: 'Class of 2026', building: 'Plimpton Hall', floor: '4', isPublic: true },
+  { id: 'jules', name: 'Jules T.', handle: '@julest', school: 'Columbia University', classYear: 'Class of 2028', building: 'John Jay Hall', floor: '3', isPublic: true },
 ]
 
 const daysAgo = (n: number) => {

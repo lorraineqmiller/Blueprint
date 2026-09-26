@@ -58,7 +58,7 @@ interface BlueprintState {
   setPublic: (isPublic: boolean) => void
   connectShop: () => void
   connectGmail: () => void
-  setProfile: (patch: Partial<Pick<CurrentUser, 'name' | 'handle' | 'school' | 'classYear'>>) => void
+  setProfile: (patch: Partial<Pick<CurrentUser, 'name' | 'handle' | 'school' | 'classYear' | 'building' | 'floor'>>) => void
   upgradeToPlus: () => void
 
   // wardrobe
@@ -286,6 +286,8 @@ export const useStore = create<BlueprintState>()(
           if (patch.handle !== undefined) dbPatch.handle = patch.handle
           if (patch.school !== undefined) dbPatch.school = patch.school
           if (patch.classYear !== undefined) dbPatch.class_year = patch.classYear
+          if (patch.building !== undefined) dbPatch.building = patch.building
+          if (patch.floor !== undefined) dbPatch.floor = patch.floor
           backend.updateProfile(get().authUserId!, dbPatch).catch((e) => report('setProfile', e))
         }
       },

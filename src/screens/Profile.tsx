@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Screen } from '../components/Shell'
-import { ImagePlaceholder } from '../components/ui'
+import { ImagePlaceholder, PrimaryButton } from '../components/ui'
 import { useStore } from '../store'
 import { useMyItems } from '../lib/selectors'
 import { closetImpact } from '../lib/impact'
@@ -13,8 +14,13 @@ export default function Profile() {
   const requests = useStore((s) => s.borrowRequests)
   const people = useStore((s) => s.people)
   const setPublic = useStore((s) => s.setPublic)
+  const setProfile = useStore((s) => s.setProfile)
   const signOut = useStore((s) => s.signOut)
   const impact = closetImpact(items)
+
+  const [editingLocation, setEditingLocation] = useState(false)
+  const [buildingDraft, setBuildingDraft] = useState(user.building)
+  const [floorDraft, setFloorDraft] = useState(user.floor)
 
   const borrowsCount = requests.filter((r) => r.requesterId === user.id || r.ownerId === user.id).length
   const recentlyAdded = [...items].sort((a, b) => (a.addedAt < b.addedAt ? 1 : -1)).slice(0, 3)
@@ -29,6 +35,12 @@ export default function Profile() {
             <div className="text-sm text-neutral-600">
               {user.school} · {user.classYear}
             </div>
+            {user.building && (
+              <div className="text-xs text-neutral-500">
+                {user.building}
+                {user.floor ? ` · Floor ${user.floor}` : ''}
+              </div>
+            )}
           </div>
         </div>
 
@@ -99,6 +111,68 @@ export default function Profile() {
           >
             {user.isPublic ? 'Public' : 'Private'}
           </button>
+        </div>
+
+        <div className="mt-4 border-t border-neutral-300 pt-4">
+          {editingLocation ? (
+            <div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <div className="eyebrow mb-1 text-[11px] text-neutral-600">Building</div>
+                  <input
+                    value={buildingDraft}
+                    onChange={(e) => setBuildingDraft(e.target.value)}
+                    placeholder="Sulzberger Hall"
+                    className="w-full rounded-md border border-neutral-400 bg-white px-3 py-2 text-sm outline-none focus:border-accent-600"
+                  />
+                </div>
+                <div className="w-20">
+                  <div className="eyebrow mb-1 text-[11px] text-neutral-600">Floor</div>
+                  <input
+                    value={floorDraft}
+                    onChange={(e) => setFloorDraft(e.target.value)}
+                    placeholder="7"
+                    className="w-full rounded-md border border-neutral-400 bg-white px-3 py-2 text-sm outline-none focus:border-accent-600"
+                  />
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <PrimaryButton
+                  onClick={() => {
+                    setProfile({ building: buildingDraft, floor: floorDraft })
+                    setEditingLocation(false)
+                  }}
+                >
+                  Save
+                </PrimaryButton>
+                <button
+                  onClick={() => setEditingLocation(false)}
+                  className="eyebrow rounded-md border border-neutral-400 text-xs text-ink"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold">Location</div>
+                <p className="text-xs text-neutral-600">
+                  {user.building ? `${user.building}${user.floor ? ` · Floor ${user.floor}` : ''}` : 'Not set'}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setBuildingDraft(user.building)
+                  setFloorDraft(user.floor)
+                  setEditingLocation(true)
+                }}
+                className="eyebrow rounded-md border border-neutral-400 px-3 py-2 text-[11px] text-ink"
+              >
+                Edit
+              </button>
+            </div>
+          )}
         </div>
 
         {isBackendEnabled && (

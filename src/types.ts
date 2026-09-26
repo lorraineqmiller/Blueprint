@@ -24,7 +24,8 @@ export interface Person {
   handle: string
   school: string
   classYear: string
-  distanceLabel: string
+  building: string // e.g. "Sulzberger Hall" — self-reported, not GPS
+  floor: string // e.g. "7"
   isPublic: boolean
 }
 
@@ -87,6 +88,8 @@ export interface CurrentUser {
   handle: string
   school: string
   classYear: string
+  building: string
+  floor: string
   isPublic: boolean
   isPremium: boolean
   hasCompletedOnboarding: boolean
