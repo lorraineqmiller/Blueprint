@@ -64,6 +64,7 @@ type ProfileRow = {
   class_year: string
   building: string
   floor: string
+  avatar_url: string | null
   is_public: boolean
   is_premium: boolean
   has_completed_onboarding: boolean
@@ -80,6 +81,7 @@ function profileToUser(row: ProfileRow): CurrentUser {
     classYear: row.class_year,
     building: row.building,
     floor: row.floor,
+    avatarUrl: row.avatar_url,
     isPublic: row.is_public,
     isPremium: row.is_premium,
     hasCompletedOnboarding: row.has_completed_onboarding,
@@ -97,6 +99,7 @@ function profileToPerson(row: ProfileRow): Person {
     classYear: row.class_year,
     building: row.building,
     floor: row.floor,
+    avatarUrl: row.avatar_url,
     isPublic: row.is_public,
   }
 }
@@ -117,6 +120,7 @@ type ItemRow = {
   times_lent: number
   always_returned: boolean
   created_at: string
+  image_url: string | null
 }
 
 function itemFromRow(row: ItemRow): ClothingItem {
@@ -136,6 +140,7 @@ function itemFromRow(row: ItemRow): ClothingItem {
     source: row.source as ClothingItem['source'],
     timesLent: row.times_lent,
     alwaysReturned: row.always_returned,
+    imageUrl: row.image_url,
   }
 }
 
@@ -234,6 +239,37 @@ export async function updateItemAfterWear(itemId: string, wearCount: number, las
 export async function updateItemLendable(itemId: string, lendable: boolean) {
   const { error } = await db().from('items').update({ lendable }).eq('id', itemId)
   if (error) throw error
+}
+
+export async function updateItemImage(itemId: string, imageUrl: string) {
+  const { error } = await db().from('items').update({ image_url: imageUrl }).eq('id', itemId)
+  if (error) throw error
+}
+
+// ── photo upload ────────────────────────────────────────────────────────
+// One shared public-read bucket; RLS scopes writes to each user's own
+// folder (see 0006_photos.sql), so the path itself is the access control.
+const PHOTO_BUCKET = 'public-media'
+
+function fileExtension(file: File): string {
+  const fromName = file.name.split('.').pop()
+  if (fromName && /^[a-z0-9]{2,5}$/i.test(fromName)) return fromName.toLowerCase()
+  return file.type.split('/')[1] || 'jpg'
+}
+
+async function uploadPhoto(path: string, file: File): Promise<string> {
+  const { error } = await db().storage.from(PHOTO_BUCKET).upload(path, file, { upsert: true, contentType: file.type })
+  if (error) throw error
+  const { data } = db().storage.from(PHOTO_BUCKET).getPublicUrl(path)
+  return data.publicUrl
+}
+
+export async function uploadItemPhoto(userId: string, itemId: string, file: File): Promise<string> {
+  return uploadPhoto(`${userId}/items/${itemId}.${fileExtension(file)}`, file)
+}
+
+export async function uploadAvatarPhoto(userId: string, file: File): Promise<string> {
+  return uploadPhoto(`${userId}/avatar.${fileExtension(file)}`, file)
 }
 
 export async function incrementTimesLent(itemId: string, timesLent: number) {

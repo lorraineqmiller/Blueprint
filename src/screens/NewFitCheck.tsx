@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
-import { Eyebrow, ImagePlaceholder, PrimaryButton } from '../components/ui'
+import { Eyebrow, Photo, PrimaryButton } from '../components/ui'
 import { useMyItems } from '../lib/selectors'
 import { useStore } from '../store'
 
@@ -78,7 +78,7 @@ export default function NewFitCheck() {
                   optionA.includes(item.id) ? 'border-accent-600' : 'border-transparent'
                 }`}
               >
-                <ImagePlaceholder className="h-16 w-full" />
+                <Photo src={item.imageUrl} alt={item.name} className="h-16 w-full" />
               </button>
             ))}
           </div>
@@ -93,7 +93,7 @@ export default function NewFitCheck() {
                   optionB.includes(item.id) ? 'border-accent-600' : 'border-transparent'
                 }`}
               >
-                <ImagePlaceholder className="h-16 w-full" />
+                <Photo src={item.imageUrl} alt={item.name} className="h-16 w-full" />
               </button>
             ))}
           </div>

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 export function Eyebrow({ children, className = '' }: { children: ReactNode; className?: string }) {
@@ -98,6 +99,35 @@ export function ImagePlaceholder({ className = '', hatched = true }: { className
             }
           : undefined
       }
+    />
+  )
+}
+
+// Renders the real photo when there is one, falling back to the same
+// hatched placeholder (including if the URL 404s — e.g. a stale local-demo
+// blob: preview from a previous session) so nothing ever shows a broken
+// image icon.
+export function Photo({
+  src,
+  className = '',
+  alt = '',
+  rounded = false,
+}: {
+  src?: string | null
+  className?: string
+  alt?: string
+  rounded?: boolean
+}) {
+  const [failed, setFailed] = useState(false)
+  if (!src || failed) {
+    return <ImagePlaceholder className={`${className} ${rounded ? 'rounded-full' : ''}`} />
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+      className={`object-cover ${rounded ? 'rounded-full' : ''} ${className}`}
     />
   )
 }

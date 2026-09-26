@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
-import { ImagePlaceholder, PrimaryButton } from '../components/ui'
+import { Photo, PrimaryButton } from '../components/ui'
 import { useStore } from '../store'
 
 export default function LiveVote() {
   const nav = useNavigate()
   const { chatId } = useParams()
   const chat = useStore((s) => s.chats.find((c) => c.id === chatId))
+  const items = useStore((s) => s.items)
   const people = useStore((s) => s.people)
   const user = useStore((s) => s.user)
   const castVote = useStore((s) => s.castVote)
@@ -44,6 +45,7 @@ export default function LiveVote() {
         <div className="mt-4 grid grid-cols-2 gap-3">
           {chat.options.map((o) => {
             const pct = Math.round((o.votes / total) * 100)
+            const optionImage = items.find((i) => i.id === o.itemIds[0])?.imageUrl
             return (
               <button
                 key={o.id}
@@ -53,7 +55,7 @@ export default function LiveVote() {
                 }}
                 className="overflow-hidden rounded-md border border-neutral-300 bg-white text-left"
               >
-                <ImagePlaceholder className="h-32 w-full" />
+                <Photo src={optionImage} alt={o.label} className="h-32 w-full" />
                 <div className="eyebrow bg-navy px-2 py-1 text-[10px] text-white">{o.label}</div>
                 <div className="px-2 py-2">
                   <div className="mb-1 h-1.5 w-full rounded-full bg-neutral-200">

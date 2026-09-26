@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
-import { Badge, ImagePlaceholder, PrimaryButton } from '../components/ui'
+import { Badge, Photo, PrimaryButton } from '../components/ui'
 import { useStore } from '../store'
 import { proximityLabel } from '../lib/proximity'
 
@@ -40,7 +40,7 @@ export default function ConfirmedLook() {
             return (
               <div key={item.id} className="overflow-hidden rounded-md border border-neutral-300 bg-white">
                 <div className="relative">
-                  <ImagePlaceholder className="h-32 w-full" />
+                  <Photo src={item.imageUrl} alt={item.name} className="h-32 w-full" />
                   <span
                     className={`eyebrow absolute left-1 top-1 rounded-sm px-1.5 py-0.5 text-[9px] text-white ${
                       owned ? 'bg-navy' : 'bg-accent-600'

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Screen } from '../components/Shell'
-import { Card, ImagePlaceholder } from '../components/ui'
+import { Card, Photo } from '../components/ui'
 import { useStore } from '../store'
 import { isBackendEnabled } from '../lib/supabaseClient'
 import { isSameBuilding, isSameFloor, proximityLabel } from '../lib/proximity'
@@ -66,7 +66,7 @@ export default function FriendsClosets() {
           {lendable.map(({ item, owner }) => (
             <button key={item.id} onClick={() => nav(`/borrow/${item.id}`)} className="block w-full text-left">
               <Card className="flex items-center gap-3 p-3">
-                <ImagePlaceholder className="h-14 w-14 shrink-0 rounded-md" />
+                <Photo src={item.imageUrl} alt={item.name} className="h-14 w-14 shrink-0 rounded-md" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold uppercase">{item.name}</div>
                   <div className="truncate text-xs text-neutral-600">

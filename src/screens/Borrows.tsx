@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Screen } from '../components/Shell'
-import { Card, ImagePlaceholder, PrimaryButton, SecondaryButton } from '../components/ui'
+import { Card, Photo, PrimaryButton, SecondaryButton } from '../components/ui'
 import { useStore } from '../store'
 import type { BorrowStatus } from '../types'
 
@@ -54,7 +54,7 @@ export default function Borrows() {
             return (
               <Card key={r.id} className="p-4">
                 <div className="flex gap-3">
-                  <ImagePlaceholder className="h-14 w-14 shrink-0 rounded-md" />
+                  <Photo src={item.imageUrl} alt={item.name} className="h-14 w-14 shrink-0 rounded-md" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between">
                       <span className="font-heading text-base font-semibold uppercase">{item.name}</span>

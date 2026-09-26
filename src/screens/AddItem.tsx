@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
-import { Card, Eyebrow, PrimaryButton } from '../components/ui'
+import { Card, Eyebrow, Photo, PrimaryButton } from '../components/ui'
 import { useStore } from '../store'
 import type { Category } from '../types'
 
@@ -37,6 +37,7 @@ export default function AddItem() {
   const connectShop = useStore((s) => s.connectShop)
   const connectGmail = useStore((s) => s.connectGmail)
   const addItem = useStore((s) => s.addItem)
+  const uploadItemImage = useStore((s) => s.uploadItemImage)
 
   const [showManual, setShowManual] = useState(false)
   const [name, setName] = useState('')
@@ -45,6 +46,9 @@ export default function AddItem() {
   const [size, setSize] = useState('')
   const [price, setPrice] = useState('')
   const [imported, setImported] = useState<string | null>(null)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
 
   if (showManual) {
     return (
@@ -52,6 +56,34 @@ export default function AddItem() {
         <TopBar title="Add Item" onBack={() => setShowManual(false)} />
         <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto px-6 py-6">
           <div className="space-y-4">
+            <div>
+              <Eyebrow className="mb-1">Photo</Eyebrow>
+              <button
+                onClick={() => fileInput.current?.click()}
+                className="relative block h-40 w-full overflow-hidden rounded-md border border-dashed border-neutral-400"
+              >
+                <Photo src={photoPreview} className="h-40 w-full" />
+                {!photoPreview && (
+                  <span className="absolute inset-0 flex items-center justify-center text-sm text-neutral-500">
+                    Tap to snap or choose a photo
+                  </span>
+                )}
+              </button>
+              <input
+                ref={fileInput}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) {
+                    setPhotoFile(file)
+                    setPhotoPreview(URL.createObjectURL(file))
+                  }
+                }}
+              />
+            </div>
             <div>
               <Eyebrow className="mb-1">Item name</Eyebrow>
               <input
@@ -120,6 +152,7 @@ export default function AddItem() {
                 priceDollars: Number(price) || 0,
                 source: 'manual',
               })
+              if (photoFile) uploadItemImage(id, photoFile)
               nav(`/closet/${id}`)
             }}
           >

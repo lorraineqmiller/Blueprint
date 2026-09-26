@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Screen } from '../components/Shell'
-import { Badge, Eyebrow, ImagePlaceholder } from '../components/ui'
+import { Badge, Eyebrow, Photo } from '../components/ui'
 import { useStore } from '../store'
 import { useMyItems } from '../lib/selectors'
 import { closetImpact } from '../lib/impact'
@@ -29,7 +29,7 @@ export default function Home() {
             <h1 className="font-heading text-3xl font-semibold uppercase">Hey {firstName}</h1>
           </div>
           <button onClick={() => nav('/profile')}>
-            <ImagePlaceholder className="h-10 w-10 rounded-md" />
+            <Photo src={user.avatarUrl} alt={user.name} className="h-10 w-10 rounded-md" />
           </button>
         </div>
 
@@ -72,9 +72,10 @@ export default function Home() {
                 {votingChat.options.slice(0, 2).map((o) => {
                   const total = votingChat.options.reduce((a, b) => a + b.votes, 0) || 1
                   const pct = Math.round((o.votes / total) * 100)
+                  const optionImage = allItems.find((i) => i.id === o.itemIds[0])?.imageUrl
                   return (
                     <div key={o.id} className="overflow-hidden rounded-md border border-neutral-300">
-                      <ImagePlaceholder className="h-28 w-full" />
+                      <Photo src={optionImage} alt={o.label} className="h-28 w-full" />
                       <div className="eyebrow bg-navy px-2 py-1 text-[10px] text-white">{o.label}</div>
                       <div className="px-2 py-1 text-xs text-neutral-600">
                         {o.votes} votes · {pct}%
@@ -113,7 +114,7 @@ export default function Home() {
                   className="w-28 shrink-0 overflow-hidden rounded-md border border-neutral-300 bg-white text-left"
                 >
                   <div className="relative">
-                    <ImagePlaceholder className="h-28 w-full" />
+                    <Photo src={item.imageUrl} alt={item.name} className="h-28 w-full" />
                     <span className="eyebrow absolute left-1 top-1 rounded-sm bg-accent-600 px-1.5 py-0.5 text-[9px] text-white">
                       Lendable
                     </span>

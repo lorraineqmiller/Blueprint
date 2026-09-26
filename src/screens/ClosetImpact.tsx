@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
-import { Card, ImagePlaceholder, StatTile } from '../components/ui'
+import { Card, Photo, StatTile } from '../components/ui'
 import { useMyItems } from '../lib/selectors'
 import { closetImpact, costPerWear, daysSince } from '../lib/impact'
 import { useStore } from '../store'
@@ -84,7 +84,7 @@ export default function ClosetImpact() {
             {hardestWorking.map((item, idx) => (
               <Card key={item.id} className="flex items-center gap-3 p-3">
                 <span className="font-heading w-4 text-center text-sm text-neutral-500">{idx + 1}</span>
-                <ImagePlaceholder className="h-12 w-12 rounded-md" />
+                <Photo src={item.imageUrl} alt={item.name} className="h-12 w-12 rounded-md" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold uppercase">{item.name}</div>
                   <div className="text-xs text-neutral-600">

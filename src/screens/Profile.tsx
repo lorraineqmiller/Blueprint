@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Screen } from '../components/Shell'
-import { ImagePlaceholder, PrimaryButton } from '../components/ui'
+import { Photo, PrimaryButton } from '../components/ui'
 import { useStore } from '../store'
 import { useMyItems } from '../lib/selectors'
 import { closetImpact } from '../lib/impact'
@@ -16,7 +16,9 @@ export default function Profile() {
   const setPublic = useStore((s) => s.setPublic)
   const setProfile = useStore((s) => s.setProfile)
   const signOut = useStore((s) => s.signOut)
+  const uploadAvatar = useStore((s) => s.uploadAvatar)
   const impact = closetImpact(items)
+  const avatarInput = useRef<HTMLInputElement>(null)
 
   const [editingLocation, setEditingLocation] = useState(false)
   const [buildingDraft, setBuildingDraft] = useState(user.building)
@@ -29,7 +31,23 @@ export default function Profile() {
     <Screen>
       <div className="px-5 py-5">
         <div className="flex items-center gap-4">
-          <ImagePlaceholder className="h-16 w-16 rounded-full" />
+          <button onClick={() => avatarInput.current?.click()} className="relative shrink-0">
+            <Photo src={user.avatarUrl} alt={user.name} rounded className="h-16 w-16" />
+            <span className="eyebrow absolute -bottom-1 -right-1 rounded-full bg-accent-700 px-1.5 py-0.5 text-[8px] text-white">
+              Edit
+            </span>
+          </button>
+          <input
+            ref={avatarInput}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) uploadAvatar(file)
+              e.target.value = ''
+            }}
+          />
           <div>
             <div className="font-heading text-lg font-semibold">{user.handle}</div>
             <div className="text-sm text-neutral-600">
@@ -92,7 +110,7 @@ export default function Profile() {
         <div className="mt-2 grid grid-cols-3 gap-3">
           {recentlyAdded.map((item) => (
             <button key={item.id} onClick={() => nav(`/closet/${item.id}`)} className="overflow-hidden rounded-md border border-neutral-300 bg-white text-left">
-              <ImagePlaceholder className="h-24 w-full" />
+              <Photo src={item.imageUrl} alt={item.name} className="h-24 w-full" />
               <div className="truncate px-2 py-1 text-[11px] font-semibold uppercase">{item.name}</div>
             </button>
           ))}

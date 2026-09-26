@@ -1,6 +1,7 @@
+import { useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
-import { ImagePlaceholder, PrimaryButton, SecondaryButton, StatTile } from '../components/ui'
+import { Photo, PrimaryButton, SecondaryButton, StatTile } from '../components/ui'
 import { useItemById } from '../lib/selectors'
 import { costPerWear, formatRelative } from '../lib/impact'
 import { useStore } from '../store'
@@ -11,13 +12,31 @@ export default function ItemDetail() {
   const item = useItemById(itemId)
   const logWear = useStore((s) => s.logWear)
   const toggleLendable = useStore((s) => s.toggleLendable)
+  const uploadItemImage = useStore((s) => s.uploadItemImage)
+  const fileInput = useRef<HTMLInputElement>(null)
 
   if (!item) return null
 
   return (
     <Screen withNav={false}>
       <TopBar title="Item Detail" onBack={() => nav(-1)} />
-      <ImagePlaceholder className="h-72 w-full" />
+      <button onClick={() => fileInput.current?.click()} className="relative block w-full">
+        <Photo src={item.imageUrl} alt={item.name} className="h-72 w-full" />
+        <span className="eyebrow absolute bottom-2 right-2 rounded-sm bg-navy/90 px-2 py-1 text-[10px] text-white">
+          {item.imageUrl ? 'Change photo' : 'Add photo'}
+        </span>
+      </button>
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) uploadItemImage(item.id, file)
+          e.target.value = ''
+        }}
+      />
       <div className="px-5 py-5">
         <div className="eyebrow inline-block rounded-sm bg-navy px-2 py-1 text-[10px] text-white">
           {item.category} · {item.color}

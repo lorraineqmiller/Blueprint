@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
-import { Card, ImagePlaceholder } from '../components/ui'
+import { Card, Photo } from '../components/ui'
 import { useStore } from '../store'
 import { isBackendEnabled } from '../lib/supabaseClient'
 
@@ -29,7 +29,7 @@ export default function FriendsList() {
         <div className="mt-2 space-y-2">
           {people.map((p) => (
             <Card key={p.id} className="flex items-center gap-3 p-3">
-              <ImagePlaceholder className="h-12 w-12 rounded-full" />
+              <Photo src={p.avatarUrl} alt={p.name} rounded className="h-12 w-12" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">{p.name}</div>
                 <div className="truncate text-xs text-neutral-600">
@@ -56,7 +56,7 @@ export default function FriendsList() {
                 <div className="mt-2 space-y-2">
                   {incoming.map((p) => (
                     <Card key={p.id} className="flex items-center gap-3 p-3">
-                      <ImagePlaceholder className="h-10 w-10 rounded-full" />
+                      <Photo src={p.avatarUrl} alt={p.name} rounded className="h-10 w-10" />
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-semibold">{p.name}</div>
                         <div className="truncate text-xs text-neutral-600">{p.school}</div>
@@ -89,7 +89,7 @@ export default function FriendsList() {
                   const pending = outgoingIds.includes(p.id)
                   return (
                     <Card key={p.id} className="flex items-center gap-3 p-3">
-                      <ImagePlaceholder className="h-10 w-10 rounded-full" />
+                      <Photo src={p.avatarUrl} alt={p.name} rounded className="h-10 w-10" />
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-semibold">{p.name}</div>
                         <div className="truncate text-xs text-neutral-600">

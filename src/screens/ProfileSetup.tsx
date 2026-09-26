@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
-import { Eyebrow, ImagePlaceholder, PrimaryButton } from '../components/ui'
+import { Eyebrow, Photo, PrimaryButton } from '../components/ui'
 import { useStore } from '../store'
 
 export default function ProfileSetup() {
@@ -10,9 +10,11 @@ export default function ProfileSetup() {
   const setProfile = useStore((s) => s.setProfile)
   const setPublic = useStore((s) => s.setPublic)
   const completeOnboarding = useStore((s) => s.completeOnboarding)
+  const uploadAvatar = useStore((s) => s.uploadAvatar)
   const [classYear, setClassYear] = useState(user.classYear)
   const [building, setBuilding] = useState(user.building)
   const [floor, setFloor] = useState(user.floor)
+  const avatarInput = useRef<HTMLInputElement>(null)
 
   return (
     <Screen withNav={false} scroll={false}>
@@ -20,7 +22,23 @@ export default function ProfileSetup() {
       <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto px-6 py-6">
         <div className="space-y-6">
           <div className="flex items-center gap-4">
-            <ImagePlaceholder className="h-16 w-16 rounded-full" />
+            <button onClick={() => avatarInput.current?.click()} className="relative shrink-0">
+              <Photo src={user.avatarUrl} alt={user.name} rounded className="h-16 w-16" />
+              <span className="eyebrow absolute -bottom-1 -right-1 rounded-full bg-accent-700 px-1.5 py-0.5 text-[8px] text-white">
+                Edit
+              </span>
+            </button>
+            <input
+              ref={avatarInput}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) uploadAvatar(file)
+                e.target.value = ''
+              }}
+            />
             <div>
               <div className="font-heading text-lg font-semibold">{user.name}</div>
               <div className="text-sm text-neutral-600">{user.handle}</div>

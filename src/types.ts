@@ -16,6 +16,7 @@ export interface ClothingItem {
   source: 'manual' | 'shop' | 'gmail'
   timesLent: number
   alwaysReturned: boolean
+  imageUrl: string | null
 }
 
 export interface Person {
@@ -27,6 +28,7 @@ export interface Person {
   building: string // e.g. "Sulzberger Hall" — self-reported, not GPS
   floor: string // e.g. "7"
   isPublic: boolean
+  avatarUrl: string | null
 }
 
 export type BorrowStatus = 'waiting' | 'approved' | 'declined' | 'returned'
@@ -90,6 +92,7 @@ export interface CurrentUser {
   classYear: string
   building: string
   floor: string
+  avatarUrl: string | null
   isPublic: boolean
   isPremium: boolean
   hasCompletedOnboarding: boolean

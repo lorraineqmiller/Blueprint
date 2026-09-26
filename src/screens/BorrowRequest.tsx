@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
-import { ImagePlaceholder, PrimaryButton, SegmentedControl, StatTile } from '../components/ui'
+import { Photo, PrimaryButton, SegmentedControl, StatTile } from '../components/ui'
 import { useItemById, usePersonById } from '../lib/selectors'
 import { borrowImpact } from '../lib/impact'
 import { proximityLabel } from '../lib/proximity'
@@ -55,7 +55,7 @@ export default function BorrowRequest() {
         </p>
 
         <div className="mt-3 flex gap-3 rounded-md border border-neutral-300 bg-white p-3">
-          <ImagePlaceholder className="h-16 w-16 shrink-0 rounded-md" />
+          <Photo src={item.imageUrl} alt={item.name} className="h-16 w-16 shrink-0 rounded-md" />
           <div>
             <div className="font-heading text-lg font-semibold uppercase">{item.name}</div>
             <div className="text-sm text-neutral-600">

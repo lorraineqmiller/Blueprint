@@ -17,6 +17,7 @@ export const seedUser: CurrentUser = {
   classYear: 'Class of 2028',
   building: 'John Jay Hall',
   floor: '10',
+  avatarUrl: null,
   isPublic: true,
   isPremium: false,
   hasCompletedOnboarding: false,
@@ -25,10 +26,10 @@ export const seedUser: CurrentUser = {
 }
 
 export const seedPeople: Person[] = [
-  { id: 'priya', name: 'Priya R.', handle: '@priyar', school: 'Columbia University', classYear: 'Class of 2027', building: 'John Jay Hall', floor: '10', isPublic: true },
-  { id: 'tessa', name: 'Tessa L.', handle: '@tessal', school: 'Barnard College', classYear: 'Class of 2028', building: 'Sulzberger Hall', floor: '7', isPublic: true },
-  { id: 'amara', name: 'Amara O.', handle: '@amarao', school: 'Columbia University', classYear: 'Class of 2026', building: 'Plimpton Hall', floor: '4', isPublic: true },
-  { id: 'jules', name: 'Jules T.', handle: '@julest', school: 'Columbia University', classYear: 'Class of 2028', building: 'John Jay Hall', floor: '3', isPublic: true },
+  { id: 'priya', name: 'Priya R.', handle: '@priyar', school: 'Columbia University', classYear: 'Class of 2027', building: 'John Jay Hall', floor: '10', isPublic: true, avatarUrl: null },
+  { id: 'tessa', name: 'Tessa L.', handle: '@tessal', school: 'Barnard College', classYear: 'Class of 2028', building: 'Sulzberger Hall', floor: '7', isPublic: true, avatarUrl: null },
+  { id: 'amara', name: 'Amara O.', handle: '@amarao', school: 'Columbia University', classYear: 'Class of 2026', building: 'Plimpton Hall', floor: '4', isPublic: true, avatarUrl: null },
+  { id: 'jules', name: 'Jules T.', handle: '@julest', school: 'Columbia University', classYear: 'Class of 2028', building: 'John Jay Hall', floor: '3', isPublic: true, avatarUrl: null },
 ]
 
 const daysAgo = (n: number) => {
@@ -39,22 +40,22 @@ const daysAgo = (n: number) => {
 
 export const seedItems: ClothingItem[] = [
   // Anna's closet
-  { id: 'item-tee', ownerId: ME, name: 'Boxy White Tee', brand: 'Uniqlo U', category: 'Tops', size: 'S', color: 'White', priceCents: 2500, wearCount: 41, lastWornAt: daysAgo(1), lendable: true, addedAt: daysAgo(240), source: 'manual', timesLent: 2, alwaysReturned: true },
-  { id: 'item-denim', ownerId: ME, name: 'Wide-Leg Dark Denim', brand: "Levi's 501", category: 'Bottoms', size: '28', color: 'Indigo', priceCents: 9800, wearCount: 38, lastWornAt: daysAgo(3), lendable: true, addedAt: daysAgo(210), source: 'shop', timesLent: 1, alwaysReturned: true },
-  { id: 'item-sneakers', ownerId: ME, name: 'Court Sneakers', brand: 'Adidas Stan Smith', category: 'Shoes', size: '8', color: 'White', priceCents: 9000, wearCount: 52, lastWornAt: daysAgo(0), lendable: false, addedAt: daysAgo(300), source: 'manual', timesLent: 0, alwaysReturned: true },
-  { id: 'item-cap', ownerId: ME, name: 'Trucker Cap', brand: 'American Needle', category: 'Accessories', size: 'One size', color: 'Navy', priceCents: 3200, wearCount: 46, lastWornAt: daysAgo(2), lendable: true, addedAt: daysAgo(260), source: 'manual', timesLent: 3, alwaysReturned: true },
-  { id: 'item-halter', ownerId: ME, name: 'Halter Knit + Floral Mini', brand: 'Reformation', category: 'Dresses', size: 'S', color: 'Black Floral', priceCents: 18800, wearCount: 6, lastWornAt: daysAgo(14), lendable: true, addedAt: daysAgo(90), source: 'gmail', timesLent: 1, alwaysReturned: true },
-  { id: 'item-stilettos', ownerId: ME, name: 'Floral Stilettos', brand: 'Jeffrey Campbell', category: 'Shoes', size: '8', color: 'Floral', priceCents: 11000, wearCount: 6, lastWornAt: daysAgo(77), lendable: true, addedAt: daysAgo(200), source: 'manual', timesLent: 0, alwaysReturned: true },
-  { id: 'item-slipdress', ownerId: ME, name: 'Satin Slip Dress', brand: 'Motel Rocks', category: 'Dresses', size: 'S', color: 'Champagne', priceCents: 6900, wearCount: 9, lastWornAt: daysAgo(42), lendable: true, addedAt: daysAgo(180), source: 'manual', timesLent: 1, alwaysReturned: true },
-  { id: 'item-blazer', ownerId: ME, name: 'Oversized Blazer', brand: 'Zara', category: 'Outerwear', size: 'M', color: 'Black', priceCents: 8900, wearCount: 12, lastWornAt: daysAgo(63), lendable: true, addedAt: daysAgo(150), source: 'gmail', timesLent: 2, alwaysReturned: true },
-  { id: 'item-joggers', ownerId: ME, name: 'Cinched Joggers', brand: 'Aritzia', category: 'Bottoms', size: 'S', color: 'Grey', priceCents: 6800, wearCount: 3, lastWornAt: daysAgo(5), lendable: false, addedAt: daysAgo(20), source: 'shop', timesLent: 0, alwaysReturned: true },
+  { id: 'item-tee', ownerId: ME, name: 'Boxy White Tee', brand: 'Uniqlo U', category: 'Tops', size: 'S', color: 'White', priceCents: 2500, wearCount: 41, lastWornAt: daysAgo(1), lendable: true, addedAt: daysAgo(240), source: 'manual', timesLent: 2, alwaysReturned: true, imageUrl: null },
+  { id: 'item-denim', ownerId: ME, name: 'Wide-Leg Dark Denim', brand: "Levi's 501", category: 'Bottoms', size: '28', color: 'Indigo', priceCents: 9800, wearCount: 38, lastWornAt: daysAgo(3), lendable: true, addedAt: daysAgo(210), source: 'shop', timesLent: 1, alwaysReturned: true, imageUrl: null },
+  { id: 'item-sneakers', ownerId: ME, name: 'Court Sneakers', brand: 'Adidas Stan Smith', category: 'Shoes', size: '8', color: 'White', priceCents: 9000, wearCount: 52, lastWornAt: daysAgo(0), lendable: false, addedAt: daysAgo(300), source: 'manual', timesLent: 0, alwaysReturned: true, imageUrl: null },
+  { id: 'item-cap', ownerId: ME, name: 'Trucker Cap', brand: 'American Needle', category: 'Accessories', size: 'One size', color: 'Navy', priceCents: 3200, wearCount: 46, lastWornAt: daysAgo(2), lendable: true, addedAt: daysAgo(260), source: 'manual', timesLent: 3, alwaysReturned: true, imageUrl: null },
+  { id: 'item-halter', ownerId: ME, name: 'Halter Knit + Floral Mini', brand: 'Reformation', category: 'Dresses', size: 'S', color: 'Black Floral', priceCents: 18800, wearCount: 6, lastWornAt: daysAgo(14), lendable: true, addedAt: daysAgo(90), source: 'gmail', timesLent: 1, alwaysReturned: true, imageUrl: null },
+  { id: 'item-stilettos', ownerId: ME, name: 'Floral Stilettos', brand: 'Jeffrey Campbell', category: 'Shoes', size: '8', color: 'Floral', priceCents: 11000, wearCount: 6, lastWornAt: daysAgo(77), lendable: true, addedAt: daysAgo(200), source: 'manual', timesLent: 0, alwaysReturned: true, imageUrl: null },
+  { id: 'item-slipdress', ownerId: ME, name: 'Satin Slip Dress', brand: 'Motel Rocks', category: 'Dresses', size: 'S', color: 'Champagne', priceCents: 6900, wearCount: 9, lastWornAt: daysAgo(42), lendable: true, addedAt: daysAgo(180), source: 'manual', timesLent: 1, alwaysReturned: true, imageUrl: null },
+  { id: 'item-blazer', ownerId: ME, name: 'Oversized Blazer', brand: 'Zara', category: 'Outerwear', size: 'M', color: 'Black', priceCents: 8900, wearCount: 12, lastWornAt: daysAgo(63), lendable: true, addedAt: daysAgo(150), source: 'gmail', timesLent: 2, alwaysReturned: true, imageUrl: null },
+  { id: 'item-joggers', ownerId: ME, name: 'Cinched Joggers', brand: 'Aritzia', category: 'Bottoms', size: 'S', color: 'Grey', priceCents: 6800, wearCount: 3, lastWornAt: daysAgo(5), lendable: false, addedAt: daysAgo(20), source: 'shop', timesLent: 0, alwaysReturned: true, imageUrl: null },
 
   // Friends' closets (lendable pool)
-  { id: 'item-docboots', ownerId: 'tessa', name: 'Doc Boots', brand: 'Dr. Martens 1460', category: 'Shoes', size: '8', color: 'Black', priceCents: 17000, wearCount: 30, lastWornAt: daysAgo(2), lendable: true, addedAt: daysAgo(400), source: 'manual', timesLent: 5, alwaysReturned: true },
-  { id: 'item-trench', ownerId: 'amara', name: 'Cropped Trench', brand: 'Aritzia', category: 'Outerwear', size: 'S', color: 'Camel', priceCents: 22000, wearCount: 18, lastWornAt: daysAgo(6), lendable: true, addedAt: daysAgo(320), source: 'manual', timesLent: 3, alwaysReturned: true },
-  { id: 'item-scarf', ownerId: 'jules', name: 'Silk Scarf', brand: 'Vintage Hermès', category: 'Accessories', size: '—', color: 'Multi', priceCents: 45000, wearCount: 9, lastWornAt: daysAgo(30), lendable: true, addedAt: daysAgo(500), source: 'manual', timesLent: 4, alwaysReturned: true },
-  { id: 'item-cardigan', ownerId: 'priya', name: 'Oat Cardigan', brand: 'COS', category: 'Tops', size: 'M', color: 'Oat', priceCents: 9000, wearCount: 21, lastWornAt: daysAgo(4), lendable: true, addedAt: daysAgo(280), source: 'manual', timesLent: 5, alwaysReturned: true },
-  { id: 'item-satinslip', ownerId: 'jules', name: 'Red Satin Slip', brand: 'Réalisation Par', category: 'Dresses', size: 'S', color: 'Red', priceCents: 24000, wearCount: 7, lastWornAt: daysAgo(20), lendable: true, addedAt: daysAgo(210), source: 'manual', timesLent: 2, alwaysReturned: true },
+  { id: 'item-docboots', ownerId: 'tessa', name: 'Doc Boots', brand: 'Dr. Martens 1460', category: 'Shoes', size: '8', color: 'Black', priceCents: 17000, wearCount: 30, lastWornAt: daysAgo(2), lendable: true, addedAt: daysAgo(400), source: 'manual', timesLent: 5, alwaysReturned: true, imageUrl: null },
+  { id: 'item-trench', ownerId: 'amara', name: 'Cropped Trench', brand: 'Aritzia', category: 'Outerwear', size: 'S', color: 'Camel', priceCents: 22000, wearCount: 18, lastWornAt: daysAgo(6), lendable: true, addedAt: daysAgo(320), source: 'manual', timesLent: 3, alwaysReturned: true, imageUrl: null },
+  { id: 'item-scarf', ownerId: 'jules', name: 'Silk Scarf', brand: 'Vintage Hermès', category: 'Accessories', size: '—', color: 'Multi', priceCents: 45000, wearCount: 9, lastWornAt: daysAgo(30), lendable: true, addedAt: daysAgo(500), source: 'manual', timesLent: 4, alwaysReturned: true, imageUrl: null },
+  { id: 'item-cardigan', ownerId: 'priya', name: 'Oat Cardigan', brand: 'COS', category: 'Tops', size: 'M', color: 'Oat', priceCents: 9000, wearCount: 21, lastWornAt: daysAgo(4), lendable: true, addedAt: daysAgo(280), source: 'manual', timesLent: 5, alwaysReturned: true, imageUrl: null },
+  { id: 'item-satinslip', ownerId: 'jules', name: 'Red Satin Slip', brand: 'Réalisation Par', category: 'Dresses', size: 'S', color: 'Red', priceCents: 24000, wearCount: 7, lastWornAt: daysAgo(20), lendable: true, addedAt: daysAgo(210), source: 'manual', timesLent: 2, alwaysReturned: true, imageUrl: null },
 ]
 
 // last 6 months of wear-log history, seeded so the chart + impact numbers feel real

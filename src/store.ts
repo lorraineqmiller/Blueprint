@@ -63,6 +63,10 @@ interface BlueprintState {
   connectGmail: () => void
   setProfile: (patch: Partial<Pick<CurrentUser, 'name' | 'handle' | 'school' | 'classYear' | 'building' | 'floor'>>) => void
   upgradeToPlus: () => void
+  // Local-preview immediately, then uploads to Storage and persists the
+  // real URL when a backend is connected. No-op upload (preview only,
+  // lost on reload) in local demo mode — there's nowhere to persist it.
+  uploadAvatar: (file: File) => Promise<void>
 
   // wardrobe
   addItem: (input: {
@@ -76,6 +80,7 @@ interface BlueprintState {
   }) => string
   logWear: (itemId: string) => void
   toggleLendable: (itemId: string) => void
+  uploadItemImage: (itemId: string, file: File) => Promise<void>
 
   // borrowing
   sendBorrowRequest: (input: {
@@ -246,6 +251,7 @@ export const useStore = create<BlueprintState>()(
           source: 'shop',
           timesLent: 0,
           alwaysReturned: true,
+          imageUrl: null,
         }
         set((s) => ({ items: [imported, ...s.items] }))
         if (isBackendEnabled) {
@@ -275,6 +281,7 @@ export const useStore = create<BlueprintState>()(
           source: 'gmail',
           timesLent: 0,
           alwaysReturned: true,
+          imageUrl: null,
         }
         set((s) => ({ items: [imported, ...s.items] }))
         if (isBackendEnabled) {
@@ -295,6 +302,19 @@ export const useStore = create<BlueprintState>()(
           if (patch.building !== undefined) dbPatch.building = patch.building
           if (patch.floor !== undefined) dbPatch.floor = patch.floor
           backend.updateProfile(get().authUserId!, dbPatch).catch((e) => report('setProfile', e))
+        }
+      },
+      uploadAvatar: async (file) => {
+        const previewUrl = URL.createObjectURL(file)
+        set((s) => ({ user: { ...s.user, avatarUrl: previewUrl } }))
+        if (!isBackendEnabled) return
+        try {
+          const userId = get().authUserId!
+          const url = await backend.uploadAvatarPhoto(userId, file)
+          await backend.updateProfile(userId, { avatar_url: url })
+          set((s) => ({ user: { ...s.user, avatarUrl: url } }))
+        } catch (e) {
+          report('uploadAvatar', e)
         }
       },
       upgradeToPlus: () => {
@@ -321,6 +341,7 @@ export const useStore = create<BlueprintState>()(
           source: input.source,
           timesLent: 0,
           alwaysReturned: true,
+          imageUrl: null,
         }
         set((s) => ({ items: [item, ...s.items] }))
         if (isBackendEnabled) {
@@ -358,6 +379,19 @@ export const useStore = create<BlueprintState>()(
         const next = !get().items.find((i) => i.id === itemId)?.lendable
         set((s) => ({ items: s.items.map((i) => (i.id === itemId ? { ...i, lendable: !i.lendable } : i)) }))
         if (isBackendEnabled) backend.updateItemLendable(itemId, next).catch((e) => report('toggleLendable', e))
+      },
+      uploadItemImage: async (itemId, file) => {
+        const previewUrl = URL.createObjectURL(file)
+        set((s) => ({ items: s.items.map((i) => (i.id === itemId ? { ...i, imageUrl: previewUrl } : i)) }))
+        if (!isBackendEnabled) return
+        try {
+          const ownerId = get().authUserId!
+          const url = await backend.uploadItemPhoto(ownerId, itemId, file)
+          await backend.updateItemImage(itemId, url)
+          set((s) => ({ items: s.items.map((i) => (i.id === itemId ? { ...i, imageUrl: url } : i)) }))
+        } catch (e) {
+          report('uploadItemImage', e)
+        }
       },
 
       sendBorrowRequest: (input) => {

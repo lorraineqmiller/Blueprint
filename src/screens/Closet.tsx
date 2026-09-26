@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Screen } from '../components/Shell'
-import { ImagePlaceholder } from '../components/ui'
+import { Photo } from '../components/ui'
 import { useMyItems } from '../lib/selectors'
 import type { Category } from '../types'
 
@@ -68,7 +68,7 @@ export default function Closet() {
               className="overflow-hidden rounded-md border border-neutral-300 bg-white text-left"
             >
               <div className="relative">
-                <ImagePlaceholder className="h-40 w-full" />
+                <Photo src={item.imageUrl} alt={item.name} className="h-40 w-full" />
                 {item.wearCount > 30 && (
                   <span className="eyebrow absolute left-1 top-1 rounded-sm bg-navy px-1.5 py-0.5 text-[9px] text-white">
                     Most Worn
