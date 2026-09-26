@@ -11,7 +11,6 @@ import Closet from './screens/Closet'
 import ItemDetail from './screens/ItemDetail'
 import AddItem from './screens/AddItem'
 import FriendsClosets from './screens/FriendsClosets'
-import FindFriends from './screens/FindFriends'
 import FriendsList from './screens/FriendsList'
 import BorrowRequest from './screens/BorrowRequest'
 import Borrows from './screens/Borrows'
@@ -102,14 +101,6 @@ export default function App() {
           element={
             <AuthGate>
               <FriendsList />
-            </AuthGate>
-          }
-        />
-        <Route
-          path="/friends/find"
-          element={
-            <AuthGate>
-              <FindFriends />
             </AuthGate>
           }
         />

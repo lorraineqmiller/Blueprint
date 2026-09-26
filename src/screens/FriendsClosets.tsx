@@ -18,8 +18,8 @@ export default function FriendsClosets() {
         <div className="flex items-center justify-between">
           <h1 className="font-heading text-3xl font-semibold uppercase">Closets Near Me</h1>
           {isBackendEnabled && (
-            <button onClick={() => nav('/friends/find')} className="eyebrow text-xs text-accent-600">
-              Find Friends
+            <button onClick={() => nav('/friends')} className="eyebrow text-xs text-accent-600">
+              Friends
             </button>
           )}
         </div>
