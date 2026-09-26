@@ -12,6 +12,7 @@ import ItemDetail from './screens/ItemDetail'
 import AddItem from './screens/AddItem'
 import FriendsClosets from './screens/FriendsClosets'
 import FindFriends from './screens/FindFriends'
+import FriendsList from './screens/FriendsList'
 import BorrowRequest from './screens/BorrowRequest'
 import Borrows from './screens/Borrows'
 import Chats from './screens/Chats'
@@ -93,6 +94,14 @@ export default function App() {
           element={
             <AuthGate>
               <FriendsClosets />
+            </AuthGate>
+          }
+        />
+        <Route
+          path="/friends"
+          element={
+            <AuthGate>
+              <FriendsList />
             </AuthGate>
           }
         />

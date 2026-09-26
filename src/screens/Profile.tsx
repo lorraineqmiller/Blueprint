@@ -37,10 +37,13 @@ export default function Profile() {
             <div className="font-heading text-2xl font-semibold">{items.length}</div>
             <div className="eyebrow text-[10px] text-neutral-600">Pieces</div>
           </div>
-          <div className="rounded-md border border-neutral-300 bg-white py-3 text-center">
+          <button
+            onClick={() => nav('/friends')}
+            className="rounded-md border border-neutral-300 bg-white py-3 text-center"
+          >
             <div className="font-heading text-2xl font-semibold">{people.length}</div>
             <div className="eyebrow text-[10px] text-neutral-600">Friends</div>
-          </div>
+          </button>
           <div className="rounded-md border border-neutral-300 bg-white py-3 text-center">
             <div className="font-heading text-2xl font-semibold">{borrowsCount}</div>
             <div className="eyebrow text-[10px] text-neutral-600">Borrows</div>
