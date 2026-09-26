@@ -23,6 +23,16 @@ export async function signUp(input: { email: string; password: string; name: str
   return data
 }
 
+export async function isHandleAvailable(handle: string): Promise<boolean> {
+  // Runs pre-signup with no session yet, so RLS only shows public profiles
+  // (is_public defaults true for everyone) — a false "available" for a
+  // private profile's handle is caught for real at insert time by the
+  // signup trigger's own collision fallback (0003_fix_handle_collision.sql).
+  const { data, error } = await db().from('profiles').select('id').eq('handle', handle).maybeSingle()
+  if (error) throw error
+  return data === null
+}
+
 export async function signIn(input: { email: string; password: string }) {
   const { data, error } = await db().auth.signInWithPassword(input)
   if (error) throw error
