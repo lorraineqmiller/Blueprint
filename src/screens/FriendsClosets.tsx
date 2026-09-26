@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Screen } from '../components/Shell'
 import { Card, ImagePlaceholder } from '../components/ui'
 import { useStore } from '../store'
-import { ME } from '../data/seed'
+import { isBackendEnabled } from '../lib/supabaseClient'
 
 export default function FriendsClosets() {
   const nav = useNavigate()
@@ -10,12 +10,19 @@ export default function FriendsClosets() {
   const people = useStore((s) => s.people)
   const user = useStore((s) => s.user)
 
-  const lendable = items.filter((i) => i.ownerId !== ME && i.lendable)
+  const lendable = items.filter((i) => i.ownerId !== user.id && i.lendable)
 
   return (
     <Screen>
       <div className="px-5 py-5">
-        <h1 className="font-heading text-3xl font-semibold uppercase">Closets Near Me</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="font-heading text-3xl font-semibold uppercase">Closets Near Me</h1>
+          {isBackendEnabled && (
+            <button onClick={() => nav('/friends/find')} className="eyebrow text-xs text-accent-600">
+              Find Friends
+            </button>
+          )}
+        </div>
         <p className="text-sm text-neutral-600">
           {user.school} · {people.length} friends · {lendable.length} lendable pieces
         </p>
@@ -46,6 +53,11 @@ export default function FriendsClosets() {
               </button>
             )
           })}
+          {lendable.length === 0 && isBackendEnabled && (
+            <p className="text-sm text-neutral-500">
+              Nothing here yet — once a friend marks something lendable, it'll show up in this list.
+            </p>
+          )}
         </div>
       </div>
     </Screen>

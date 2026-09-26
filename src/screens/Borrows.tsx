@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Screen } from '../components/Shell'
 import { Card, ImagePlaceholder, PrimaryButton, SecondaryButton } from '../components/ui'
 import { useStore } from '../store'
-import { ME } from '../data/seed'
 import type { BorrowStatus } from '../types'
 
 const statusStyle: Record<BorrowStatus, string> = {
@@ -19,8 +18,9 @@ export default function Borrows() {
   const people = useStore((s) => s.people)
   const respond = useStore((s) => s.respondToBorrowRequest)
   const markReturned = useStore((s) => s.markReturned)
+  const user = useStore((s) => s.user)
 
-  const list = requests.filter((r) => (tab === 'lending' ? r.ownerId === ME : r.requesterId === ME))
+  const list = requests.filter((r) => (tab === 'lending' ? r.ownerId === user.id : r.requesterId === user.id))
 
   return (
     <Screen>

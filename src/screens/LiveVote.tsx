@@ -1,20 +1,26 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
 import { ImagePlaceholder, PrimaryButton } from '../components/ui'
 import { useStore } from '../store'
-import { ME } from '../data/seed'
 
 export default function LiveVote() {
   const nav = useNavigate()
   const { chatId } = useParams()
   const chat = useStore((s) => s.chats.find((c) => c.id === chatId))
   const people = useStore((s) => s.people)
+  const user = useStore((s) => s.user)
   const castVote = useStore((s) => s.castVote)
   const addComment = useStore((s) => s.addComment)
   const decideChat = useStore((s) => s.decideChat)
+  const subscribeToChatRealtime = useStore((s) => s.subscribeToChatRealtime)
   const [comment, setComment] = useState('')
   const [voted, setVoted] = useState(false)
+
+  useEffect(() => {
+    if (!chatId) return
+    return subscribeToChatRealtime(chatId)
+  }, [chatId, subscribeToChatRealtime])
 
   if (!chat) return null
   const total = chat.options.reduce((a, o) => a + o.votes, 0) || 1
@@ -32,7 +38,7 @@ export default function LiveVote() {
           <p className="font-heading mt-1 text-lg font-semibold uppercase">
             {chat.eventName} · {chat.location} · {chat.eventTime}
           </p>
-          <p className="mt-1 text-sm text-neutral-600">Anna posted two options from her closet. Tap the one you'd wear.</p>
+          <p className="mt-1 text-sm text-neutral-600">Two outfit options were posted from the closet. Tap the one you'd wear.</p>
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3">
@@ -69,7 +75,7 @@ export default function LiveVote() {
               <div className="h-8 w-8 shrink-0 rounded-md bg-neutral-200" />
               <div>
                 <p className="text-xs text-neutral-500">
-                  {c.authorId === ME ? 'You' : people.find((p) => p.id === c.authorId)?.name} ·{' '}
+                  {c.authorId === user.id ? 'You' : people.find((p) => p.id === c.authorId)?.name} ·{' '}
                   {new Date(c.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                 </p>
                 <p className="text-sm">{c.text}</p>

@@ -2,7 +2,6 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
 import { Badge, ImagePlaceholder, PrimaryButton } from '../components/ui'
 import { useStore } from '../store'
-import { ME } from '../data/seed'
 
 export default function ConfirmedLook() {
   const nav = useNavigate()
@@ -10,12 +9,13 @@ export default function ConfirmedLook() {
   const chat = useStore((s) => s.chats.find((c) => c.id === chatId))
   const items = useStore((s) => s.items)
   const people = useStore((s) => s.people)
+  const user = useStore((s) => s.user)
 
   if (!chat) return null
   const winner = chat.options.find((o) => o.id === chat.decidedOptionId) ?? chat.options[0]
   const totalVotes = chat.options.reduce((a, o) => a + o.votes, 0)
   const lookItems = winner.itemIds.map((id) => items.find((i) => i.id === id)).filter(Boolean) as typeof items
-  const toBorrow = lookItems.filter((i) => i.ownerId !== ME)
+  const toBorrow = lookItems.filter((i) => i.ownerId !== user.id)
 
   return (
     <Screen withNav={false}>
@@ -35,7 +35,7 @@ export default function ConfirmedLook() {
         <div className="mt-2 grid grid-cols-2 gap-3">
           {lookItems.map((item) => {
             const owner = people.find((p) => p.id === item.ownerId)
-            const owned = item.ownerId === ME
+            const owned = item.ownerId === user.id
             return (
               <div key={item.id} className="overflow-hidden rounded-md border border-neutral-300 bg-white">
                 <div className="relative">

@@ -38,11 +38,20 @@ interface BlueprintState {
   signOut: () => Promise<void>
 
   user: CurrentUser
-  people: Person[]
+  people: Person[] // your accepted friends once a backend is connected
   items: ClothingItem[]
   borrowRequests: BorrowRequest[]
   chats: GroupChat[]
   wearLog: WearLogEntry[]
+
+  // friend graph — no-ops against local mock data (the 4 seed people are
+  // already "friends" there); real once a backend is connected
+  friendRequestsIncoming: Person[]
+  friendRequestsOutgoingIds: string[]
+  discoverablePeople: Person[]
+  refreshFriendData: () => void
+  sendFriendRequest: (personId: string) => void
+  respondToFriendRequest: (personId: string, decision: 'accepted' | 'declined') => void
 
   // onboarding
   completeOnboarding: () => void
@@ -74,8 +83,8 @@ interface BlueprintState {
   respondToBorrowRequest: (requestId: string, decision: 'approved' | 'declined') => void
   markReturned: (requestId: string) => void
 
-  // chats / fit checks — still local-only mock data; see Phase 2 in the
-  // backend scoping notes (friend graph + realtime voting/comments).
+  // chats / fit checks — real-time and backed by the friend graph once a
+  // backend is connected; local mock data otherwise.
   startFitCheck: (input: {
     eventName: string
     location: string
@@ -86,6 +95,9 @@ interface BlueprintState {
   castVote: (chatId: string, optionId: string) => void
   addComment: (chatId: string, text: string) => void
   decideChat: (chatId: string) => void
+  // Subscribes to live votes/comments for one chat; returns an unsubscribe
+  // function. No-op (returns a no-op) when no backend is connected.
+  subscribeToChatRealtime: (chatId: string) => () => void
 }
 
 export const useStore = create<BlueprintState>()(
@@ -102,6 +114,10 @@ export const useStore = create<BlueprintState>()(
       chats: seedChats,
       wearLog: seedWearLog,
 
+      friendRequestsIncoming: [],
+      friendRequestsOutgoingIds: [],
+      discoverablePeople: [],
+
       initAuth: () => {
         if (!isBackendEnabled) return // already 'authenticated' against local mock data
         backend.onAuthStateChange(async (userId) => {
@@ -110,23 +126,27 @@ export const useStore = create<BlueprintState>()(
             return
           }
           try {
-            const [user, myItems, discoverable, borrowRequests] = await Promise.all([
+            const [user, myItems, discoverable, borrowRequests, chats, friends] = await Promise.all([
               backend.fetchProfile(userId),
               backend.fetchMyItems(userId),
               backend.fetchDiscoverableItems(userId),
               backend.fetchBorrowRequests(userId),
+              backend.fetchMyChats(userId),
+              backend.fetchFriends(userId),
             ])
             const items = [...myItems, ...discoverable]
             const wearLog = await backend.fetchWearLog(myItems.map((i) => i.id))
-            const otherIds = Array.from(
-              new Set(
-                [...discoverable.map((i) => i.ownerId), ...borrowRequests.map((r) => r.ownerId), ...borrowRequests.map((r) => r.requesterId)].filter(
-                  (pid) => pid !== userId,
-                ),
-              ),
-            )
-            const people = await backend.fetchProfilesByIds(otherIds)
-            set({ user, items, wearLog, borrowRequests, people, authStatus: 'authenticated', authUserId: userId })
+            set({
+              user,
+              items,
+              wearLog,
+              borrowRequests,
+              chats,
+              people: friends,
+              authStatus: 'authenticated',
+              authUserId: userId,
+            })
+            get().refreshFriendData()
           } catch (err) {
             report('hydrate', err)
             set({ authStatus: 'anonymous', authUserId: null, authError: 'Could not load your account. Try signing in again.' })
@@ -154,6 +174,42 @@ export const useStore = create<BlueprintState>()(
       },
       signOut: async () => {
         if (isBackendEnabled) await backend.signOut()
+      },
+
+      refreshFriendData: () => {
+        if (!isBackendEnabled) return
+        const userId = get().authUserId
+        if (!userId) return
+        Promise.all([backend.fetchIncomingRequests(userId), backend.fetchOutgoingRequestIds(userId), backend.fetchDiscoverablePeople(userId)])
+          .then(([incoming, outgoingIds, discoverable]) =>
+            set({ friendRequestsIncoming: incoming, friendRequestsOutgoingIds: outgoingIds, discoverablePeople: discoverable }),
+          )
+          .catch((e) => report('refreshFriendData', e))
+      },
+      sendFriendRequest: (personId) => {
+        if (!isBackendEnabled) return
+        const userId = get().authUserId
+        if (!userId) return
+        set((s) => ({
+          friendRequestsOutgoingIds: [...s.friendRequestsOutgoingIds, personId],
+          discoverablePeople: s.discoverablePeople.filter((p) => p.id !== personId),
+        }))
+        backend
+          .sendFriendRequest(userId, personId)
+          .catch((e) => report('sendFriendRequest', e))
+      },
+      respondToFriendRequest: (personId, decision) => {
+        if (!isBackendEnabled) return
+        const userId = get().authUserId
+        if (!userId) return
+        const person = get().friendRequestsIncoming.find((p) => p.id === personId)
+        set((s) => ({
+          friendRequestsIncoming: s.friendRequestsIncoming.filter((p) => p.id !== personId),
+          people: decision === 'accepted' && person ? [...s.people, person] : s.people,
+        }))
+        backend
+          .respondToFriendRequest(personId, userId, decision)
+          .catch((e) => report('respondToFriendRequest', e))
       },
 
       completeOnboarding: () => {
@@ -343,21 +399,21 @@ export const useStore = create<BlueprintState>()(
         if (isBackendEnabled) backend.updateBorrowRequestStatus(requestId, 'returned').catch((e) => report('markReturned', e))
       },
 
-      // Still local-only — see the module comment above BlueprintState.
       startFitCheck: (input) => {
         const newId = id()
+        const me = get().authUserId ?? ME
+        const memberIds = isBackendEnabled ? [me, ...get().people.map((p) => p.id)] : [me, 'jules', 'amara', 'tessa', 'priya']
+        const optionA = { id: id(), label: 'Option A', itemIds: input.optionAItemIds, votes: 0 }
+        const optionB = { id: id(), label: 'Option B', itemIds: input.optionBItemIds, votes: 0 }
         const chat: GroupChat = {
           id: newId,
           title: input.eventName,
           eventName: input.eventName,
           location: input.location,
           eventTime: input.eventTime,
-          memberIds: [get().authUserId ?? ME, 'jules', 'amara', 'tessa', 'priya'],
+          memberIds,
           status: 'voting',
-          options: [
-            { id: id(), label: 'Option A', itemIds: input.optionAItemIds, votes: 0 },
-            { id: id(), label: 'Option B', itemIds: input.optionBItemIds, votes: 0 },
-          ],
+          options: [optionA, optionB],
           comments: [],
           decidedOptionId: null,
           votingClosesLabel: 'midnight',
@@ -365,37 +421,81 @@ export const useStore = create<BlueprintState>()(
           lastMessageAt: new Date().toISOString(),
         }
         set((s) => ({ chats: [chat, ...s.chats] }))
+        if (isBackendEnabled) {
+          backend
+            .insertChat({
+              id: newId,
+              title: chat.title,
+              eventName: input.eventName,
+              location: input.location,
+              eventTime: input.eventTime,
+              createdBy: me,
+              memberIds,
+              options: [optionA, optionB],
+            })
+            .catch((e) => report('startFitCheck', e))
+        }
         return newId
       },
-      castVote: (chatId, optionId) =>
+      castVote: (chatId, optionId) => {
         set((s) => ({
           chats: s.chats.map((c) =>
             c.id === chatId
               ? { ...c, options: c.options.map((o) => (o.id === optionId ? { ...o, votes: o.votes + 1 } : o)) }
               : c,
           ),
-        })),
-      addComment: (chatId, text) =>
+        }))
+        if (isBackendEnabled) {
+          const userId = get().authUserId
+          if (userId) backend.castVoteRemote(chatId, userId, optionId).catch((e) => report('castVote', e))
+        }
+      },
+      addComment: (chatId, text) => {
+        const newId = id()
+        const authorId = get().authUserId ?? ME
         set((s) => ({
           chats: s.chats.map((c) =>
             c.id === chatId
               ? {
                   ...c,
-                  comments: [...c.comments, { id: id(), authorId: get().authUserId ?? ME, text, createdAt: new Date().toISOString() }],
+                  comments: [...c.comments, { id: newId, authorId, text, createdAt: new Date().toISOString() }],
                   lastMessagePreview: `You: ${text}`,
                   lastMessageAt: new Date().toISOString(),
                 }
               : c,
           ),
-        })),
-      decideChat: (chatId) =>
+        }))
+        if (isBackendEnabled) {
+          backend.insertChatComment(newId, chatId, authorId, text).catch((e) => report('addComment', e))
+        }
+      },
+      decideChat: (chatId) => {
+        const chat = get().chats.find((c) => c.id === chatId)
+        if (!chat) return
+        const winner = chat.options.reduce((a, b) => (b.votes > a.votes ? b : a))
         set((s) => ({
-          chats: s.chats.map((c) => {
-            if (c.id !== chatId) return c
-            const winner = c.options.reduce((a, b) => (b.votes > a.votes ? b : a))
-            return { ...c, status: 'decided', decidedOptionId: winner.id, votingClosesLabel: 'closed' }
-          }),
-        })),
+          chats: s.chats.map((c) =>
+            c.id === chatId ? { ...c, status: 'decided', decidedOptionId: winner.id, votingClosesLabel: 'closed' } : c,
+          ),
+        }))
+        if (isBackendEnabled) backend.updateChatDecided(chatId, winner.id).catch((e) => report('decideChat', e))
+      },
+      subscribeToChatRealtime: (chatId) => {
+        if (!isBackendEnabled) return () => {}
+        const refetch = async () => {
+          try {
+            const fresh = await backend.fetchChatDetail(chatId)
+            if (!fresh) return
+            set((s) => ({
+              chats: s.chats.some((c) => c.id === chatId) ? s.chats.map((c) => (c.id === chatId ? fresh : c)) : [fresh, ...s.chats],
+            }))
+          } catch (err) {
+            report('subscribeToChatRealtime:refetch', err)
+          }
+        }
+        refetch()
+        return backend.subscribeToChat(chatId, refetch)
+      },
     }),
     {
       name: 'blueprint-mvp-store',

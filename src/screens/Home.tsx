@@ -4,7 +4,6 @@ import { Badge, Eyebrow, ImagePlaceholder } from '../components/ui'
 import { useStore } from '../store'
 import { useMyItems } from '../lib/selectors'
 import { closetImpact } from '../lib/impact'
-import { ME } from '../data/seed'
 
 export default function Home() {
   const nav = useNavigate()
@@ -16,7 +15,7 @@ export default function Home() {
   const impact = closetImpact(items)
 
   const votingChat = chats.find((c) => c.status === 'voting')
-  const lendableFromFriends = allItems.filter((i) => i.ownerId !== ME && i.lendable).slice(0, 4)
+  const lendableFromFriends = allItems.filter((i) => i.ownerId !== user.id && i.lendable).slice(0, 4)
 
   const firstName = user.name.split(' ')[0]
 

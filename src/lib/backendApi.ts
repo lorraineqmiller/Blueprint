@@ -4,7 +4,7 @@
 // keeps using the same shapes from src/types.ts regardless of where the data
 // comes from.
 import { supabase } from './supabaseClient'
-import type { BorrowRequest, Category, ClothingItem, CurrentUser, Person, WearLogEntry } from '../types'
+import type { BorrowRequest, Category, ClothingItem, CurrentUser, GroupChat, Person, WearLogEntry } from '../types'
 
 function db() {
   if (!supabase) throw new Error('Supabase is not configured')
@@ -81,7 +81,7 @@ function profileToPerson(row: ProfileRow): Person {
     handle: row.handle,
     school: row.school,
     classYear: row.class_year,
-    distanceLabel: 'On campus', // no geo/friend-graph yet — see Phase 2
+    distanceLabel: 'On campus', // no real geo yet — proximity is still flavor text
     isPublic: row.is_public,
   }
 }
@@ -181,8 +181,9 @@ export async function fetchMyItems(userId: string): Promise<ClothingItem[]> {
   return (data as ItemRow[]).map(itemFromRow)
 }
 
-// Public lendable items owned by someone other than the current user —
-// this is the "Closets Near Me" pool until Phase 2 adds a real friend graph.
+// Public + lendable items owned by someone other than the current user.
+// RLS (see 0002_phase2.sql) transparently restricts the rows that actually
+// come back to accepted friends only — no friendship filter needed here.
 export async function fetchDiscoverableItems(excludeUserId: string): Promise<ClothingItem[]> {
   const { data, error } = await db().from('items').select('*').eq('lendable', true).neq('owner_id', excludeUserId)
   if (error) throw error
@@ -283,4 +284,214 @@ export async function insertBorrowRequest(
 export async function updateBorrowRequestStatus(requestId: string, status: BorrowRequest['status']) {
   const { error } = await db().from('borrow_requests').update({ status }).eq('id', requestId)
   if (error) throw error
+}
+
+// ── friendships ─────────────────────────────────────────────────────────
+
+export async function fetchFriends(userId: string): Promise<Person[]> {
+  const { data, error } = await db()
+    .from('friendships')
+    .select('requester_id, addressee_id')
+    .eq('status', 'accepted')
+    .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+  if (error) throw error
+  const friendIds = (data as { requester_id: string; addressee_id: string }[]).map((r) =>
+    r.requester_id === userId ? r.addressee_id : r.requester_id,
+  )
+  return fetchProfilesByIds(friendIds)
+}
+
+export async function fetchIncomingRequests(userId: string): Promise<Person[]> {
+  const { data, error } = await db().from('friendships').select('requester_id').eq('status', 'pending').eq('addressee_id', userId)
+  if (error) throw error
+  return fetchProfilesByIds((data as { requester_id: string }[]).map((r) => r.requester_id))
+}
+
+export async function fetchOutgoingRequestIds(userId: string): Promise<string[]> {
+  const { data, error } = await db().from('friendships').select('addressee_id').eq('requester_id', userId).eq('status', 'pending')
+  if (error) throw error
+  return (data as { addressee_id: string }[]).map((r) => r.addressee_id)
+}
+
+// Public profiles you're not already connected to (in either direction, any
+// status) — the pool for a "Find Friends" screen.
+export async function fetchDiscoverablePeople(userId: string): Promise<Person[]> {
+  const { data: existing, error: e1 } = await db()
+    .from('friendships')
+    .select('requester_id, addressee_id')
+    .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+  if (e1) throw e1
+  const connectedIds = new Set<string>()
+  for (const r of existing as { requester_id: string; addressee_id: string }[]) {
+    connectedIds.add(r.requester_id === userId ? r.addressee_id : r.requester_id)
+  }
+  const { data, error } = await db().from('profiles').select('*').eq('is_public', true).neq('id', userId)
+  if (error) throw error
+  return (data as ProfileRow[]).filter((p) => !connectedIds.has(p.id)).map(profileToPerson)
+}
+
+export async function sendFriendRequest(requesterId: string, addresseeId: string) {
+  const { error } = await db().from('friendships').insert({ requester_id: requesterId, addressee_id: addresseeId, status: 'pending' })
+  if (error) throw error
+}
+
+// Declining removes the request outright rather than storing a 'declined'
+// status — there's no product reason yet to remember a decline, and it lets
+// the same two people re-request later without a stale row in the way.
+export async function respondToFriendRequest(requesterId: string, addresseeId: string, decision: 'accepted' | 'declined') {
+  if (decision === 'declined') {
+    const { error } = await db().from('friendships').delete().eq('requester_id', requesterId).eq('addressee_id', addresseeId)
+    if (error) throw error
+    return
+  }
+  const { error } = await db().from('friendships').update({ status: 'accepted' }).eq('requester_id', requesterId).eq('addressee_id', addresseeId)
+  if (error) throw error
+}
+
+// ── chats ───────────────────────────────────────────────────────────────
+
+type ChatRow = {
+  id: string
+  title: string
+  event_name: string
+  location: string
+  event_time: string
+  status: GroupChat['status']
+  decided_option_id: string | null
+  voting_closes_label: string
+  created_by: string
+  created_at: string
+}
+type ChatMemberRow = { chat_id: string; user_id: string }
+type ChatOptionRow = { id: string; chat_id: string; label: string; item_ids: string[] }
+type VoteRow = { chat_id: string; user_id: string; option_id: string }
+type ChatCommentRow = { id: string; chat_id: string; author_id: string; text: string; created_at: string }
+
+function assembleChats(
+  chats: ChatRow[],
+  members: ChatMemberRow[],
+  options: ChatOptionRow[],
+  votes: VoteRow[],
+  comments: ChatCommentRow[],
+): GroupChat[] {
+  return chats.map((c) => {
+    const chatOptions = options.filter((o) => o.chat_id === c.id)
+    const chatVotes = votes.filter((v) => v.chat_id === c.id)
+    const chatComments = [...comments.filter((cm) => cm.chat_id === c.id)].sort((a, b) => (a.created_at < b.created_at ? -1 : 1))
+    const lastComment = chatComments[chatComments.length - 1]
+    return {
+      id: c.id,
+      title: c.title,
+      eventName: c.event_name,
+      location: c.location,
+      eventTime: c.event_time,
+      memberIds: members.filter((m) => m.chat_id === c.id).map((m) => m.user_id),
+      status: c.status,
+      options: chatOptions.map((o) => ({
+        id: o.id,
+        label: o.label,
+        itemIds: o.item_ids,
+        votes: chatVotes.filter((v) => v.option_id === o.id).length,
+      })),
+      comments: chatComments.map((cm) => ({ id: cm.id, authorId: cm.author_id, text: cm.text, createdAt: cm.created_at })),
+      decidedOptionId: c.decided_option_id,
+      votingClosesLabel: c.voting_closes_label,
+      lastMessagePreview: lastComment ? lastComment.text : 'Fit check posted',
+      lastMessageAt: lastComment ? lastComment.created_at : c.created_at,
+    }
+  })
+}
+
+async function fetchChatBundle(filterChatIds: string[]) {
+  const [chatsRes, membersRes, optionsRes, votesRes, commentsRes] = await Promise.all([
+    db().from('chats').select('*').in('id', filterChatIds),
+    db().from('chat_members').select('*').in('chat_id', filterChatIds),
+    db().from('chat_options').select('*').in('chat_id', filterChatIds),
+    db().from('votes').select('*').in('chat_id', filterChatIds),
+    db().from('chat_comments').select('*').in('chat_id', filterChatIds),
+  ])
+  for (const r of [chatsRes, membersRes, optionsRes, votesRes, commentsRes]) if (r.error) throw r.error
+  return assembleChats(
+    chatsRes.data as ChatRow[],
+    membersRes.data as ChatMemberRow[],
+    optionsRes.data as ChatOptionRow[],
+    votesRes.data as VoteRow[],
+    commentsRes.data as ChatCommentRow[],
+  )
+}
+
+export async function fetchMyChats(userId: string): Promise<GroupChat[]> {
+  const { data: memberRows, error } = await db().from('chat_members').select('chat_id').eq('user_id', userId)
+  if (error) throw error
+  const chatIds = (memberRows as { chat_id: string }[]).map((r) => r.chat_id)
+  if (chatIds.length === 0) return []
+  return fetchChatBundle(chatIds)
+}
+
+export async function fetchChatDetail(chatId: string): Promise<GroupChat | null> {
+  const chats = await fetchChatBundle([chatId])
+  return chats[0] ?? null
+}
+
+export async function insertChat(input: {
+  id: string
+  title: string
+  eventName: string
+  location: string
+  eventTime: string
+  createdBy: string
+  memberIds: string[]
+  options: { id: string; label: string; itemIds: string[] }[]
+}) {
+  const { error: e1 } = await db().from('chats').insert({
+    id: input.id,
+    title: input.title,
+    event_name: input.eventName,
+    location: input.location,
+    event_time: input.eventTime,
+    created_by: input.createdBy,
+  })
+  if (e1) throw e1
+  const { error: e2 } = await db()
+    .from('chat_members')
+    .insert(input.memberIds.map((userId) => ({ chat_id: input.id, user_id: userId })))
+  if (e2) throw e2
+  const { error: e3 } = await db()
+    .from('chat_options')
+    .insert(input.options.map((o) => ({ id: o.id, chat_id: input.id, label: o.label, item_ids: o.itemIds })))
+  if (e3) throw e3
+}
+
+export async function castVoteRemote(chatId: string, userId: string, optionId: string) {
+  const { error } = await db()
+    .from('votes')
+    .upsert({ chat_id: chatId, user_id: userId, option_id: optionId }, { onConflict: 'chat_id,user_id' })
+  if (error) throw error
+}
+
+export async function insertChatComment(id: string, chatId: string, authorId: string, text: string) {
+  const { error } = await db().from('chat_comments').insert({ id, chat_id: chatId, author_id: authorId, text })
+  if (error) throw error
+}
+
+export async function updateChatDecided(chatId: string, decidedOptionId: string) {
+  const { error } = await db()
+    .from('chats')
+    .update({ status: 'decided', decided_option_id: decidedOptionId, voting_closes_label: 'closed' })
+    .eq('id', chatId)
+  if (error) throw error
+}
+
+// Live votes/comments for one chat. RLS still applies per-subscriber, so
+// this only ever fires for chats the caller is actually a member of.
+export function subscribeToChat(chatId: string, onChange: () => void) {
+  const channel = db()
+    .channel(`chat-${chatId}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'votes', filter: `chat_id=eq.${chatId}` }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_comments', filter: `chat_id=eq.${chatId}` }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'chats', filter: `id=eq.${chatId}` }, onChange)
+    .subscribe()
+  return () => {
+    db().removeChannel(channel)
+  }
 }
