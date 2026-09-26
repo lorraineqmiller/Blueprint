@@ -150,7 +150,37 @@ create policy "members can post their own comments" on chat_comments
   for insert with check (author_id = auth.uid() and public.is_chat_member(chat_id, auth.uid()));
 
 -- Realtime: broadcast row changes on the tables the Live Vote screen
--- subscribes to (RLS above still applies per-subscriber).
-alter publication supabase_realtime add table votes;
-alter publication supabase_realtime add table chat_comments;
-alter publication supabase_realtime add table chats;
+-- subscribes to (RLS above still applies per-subscriber). Wrapped so a
+-- missing/renamed publication or an already-added table can't fail this
+-- statement and roll back every CREATE TABLE/POLICY above it — that
+-- silent full-script rollback is exactly what happened the first time
+-- this migration ran with plain ALTER PUBLICATION statements here.
+do $$
+begin
+  alter publication supabase_realtime add table votes;
+exception
+  when undefined_object then
+    raise notice 'supabase_realtime publication not found — enable Realtime for votes manually (Database > Replication) if you want live updates';
+  when duplicate_object then
+    null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table chat_comments;
+exception
+  when undefined_object then
+    raise notice 'supabase_realtime publication not found — enable Realtime for chat_comments manually (Database > Replication) if you want live updates';
+  when duplicate_object then
+    null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table chats;
+exception
+  when undefined_object then
+    raise notice 'supabase_realtime publication not found — enable Realtime for chats manually (Database > Replication) if you want live updates';
+  when duplicate_object then
+    null;
+end $$;
