@@ -3,10 +3,12 @@ import { persist } from 'zustand/middleware'
 import type {
   BorrowRequest,
   Category,
-  ChatAudience,
   ClothingItem,
   CurrentUser,
-  GroupChat,
+  FitCheck,
+  FitCheckAudience,
+  FitCheckMode,
+  FriendGroup,
   Location,
   OffCampusAddress,
   Person,
@@ -15,7 +17,8 @@ import type {
 import {
   ME,
   seedBorrowRequests,
-  seedChats,
+  seedFitChecks,
+  seedFriendGroups,
   seedItems,
   seedOffCampusDistances,
   seedPeople,
@@ -75,13 +78,13 @@ interface BlueprintState {
   people: Person[] // your accepted friends once a backend is connected
   items: ClothingItem[]
   borrowRequests: BorrowRequest[]
-  chats: GroupChat[] // fit checks you're a member of
-  publicChats: GroupChat[] // public fit checks from people outside them
+  fitChecks: FitCheck[] // every fit check you can see: yours, groups', friends', community
+  friendGroups: FriendGroup[]
   wearLog: WearLogEntry[]
   buildings: Building[] // from the buildings table once a backend is connected
   distances: Record<string, number> // friend id -> meters (rounded to 100)
   refreshDistances: () => void
-  refreshPublicChats: () => void
+  refreshFitChecks: () => void
 
   // friend graph — no-ops against local mock data (the 4 seed people are
   // already "friends" there); real once a backend is connected
@@ -138,22 +141,31 @@ interface BlueprintState {
   respondToBorrowRequest: (requestId: string, decision: 'approved' | 'declined') => void
   markReturned: (requestId: string) => void
 
-  // chats / fit checks — real-time and backed by the friend graph once a
-  // backend is connected; local mock data otherwise.
+  // friend groups — owner-only lists of friends to ask for outfit advice
+  saveFriendGroup: (group: { id?: string; name: string; memberIds: string[] }) => string
+  deleteFriendGroup: (groupId: string) => void
+
+  // fit checks — real-time and backed by the friend graph once a backend
+  // is connected; local mock data otherwise.
   startFitCheck: (input: {
     eventName: string
-    location: string
-    eventTime: string
-    optionAItemIds: string[]
-    optionBItemIds: string[]
-    audience: ChatAudience
+    vibe: string
+    weather: string
+    endsAt: string | null
+    audience: FitCheckAudience
+    groupId: string | null
+    mode: FitCheckMode
+    // vote mode: 1-4 options, each closet pieces and/or a fit pic
+    options: { itemIds: string[]; photo: File | null }[]
   }) => string
-  castVote: (chatId: string, optionId: string) => void
-  addComment: (chatId: string, text: string) => void
-  decideChat: (chatId: string) => void
-  // Subscribes to live votes/comments for one chat; returns an unsubscribe
-  // function. No-op (returns a no-op) when no backend is connected.
-  subscribeToChatRealtime: (chatId: string) => () => void
+  castVote: (fitCheckId: string, optionId: string) => void
+  addComment: (fitCheckId: string, text: string) => void
+  sendSuggestion: (fitCheckId: string, input: { itemIds: string[]; lendItemIds: string[]; note: string }) => void
+  // Creator only: lock in an option (vote mode) or a suggestion (ideas mode).
+  decideFitCheck: (fitCheckId: string, pick: { optionId: string } | { suggestionId: string }) => void
+  // Subscribes to live votes/comments/suggestions for one fit check;
+  // returns an unsubscribe function. No-op locally.
+  subscribeToFitCheck: (fitCheckId: string) => () => void
 }
 
 export const useStore = create<BlueprintState>()(
@@ -167,8 +179,8 @@ export const useStore = create<BlueprintState>()(
       people: seedPeople,
       items: seedItems,
       borrowRequests: seedBorrowRequests,
-      chats: seedChats,
-      publicChats: [],
+      fitChecks: seedFitChecks,
+      friendGroups: seedFriendGroups,
       wearLog: seedWearLog,
       buildings: BUILDINGS,
       distances: localDistances(seedUser, seedPeople, BUILDINGS),
@@ -185,12 +197,13 @@ export const useStore = create<BlueprintState>()(
             return
           }
           try {
-            const [user, myItems, visible, borrowRequests, chats, friends, buildings, distances] = await Promise.all([
+            const [user, myItems, visible, borrowRequests, fitChecks, friendGroups, friends, buildings, distances] = await Promise.all([
               backend.fetchProfile(userId),
               backend.fetchMyItems(userId),
               backend.fetchVisibleItems(userId),
               backend.fetchBorrowRequests(userId),
-              backend.fetchMyChats(userId),
+              backend.fetchFitChecks(userId),
+              backend.fetchFriendGroups(userId),
               backend.fetchFriends(userId),
               backend.fetchBuildings(),
               backend.fetchFriendDistances(),
@@ -202,7 +215,8 @@ export const useStore = create<BlueprintState>()(
               items,
               wearLog,
               borrowRequests,
-              chats,
+              fitChecks,
+              friendGroups,
               people: friends,
               buildings: buildings.length > 0 ? buildings : BUILDINGS,
               distances,
@@ -210,6 +224,7 @@ export const useStore = create<BlueprintState>()(
               authUserId: userId,
             })
             get().refreshFriendData()
+            get().refreshFitChecks() // also pulls in pieces from community fit checks
           } catch (err) {
             report('hydrate', err)
             set({ authStatus: 'anonymous', authUserId: null, authError: 'Could not load your account. Try signing in again.' })
@@ -288,22 +303,26 @@ export const useStore = create<BlueprintState>()(
           .then((distances) => set({ distances }))
           .catch((e) => report('refreshDistances', e))
       },
-      refreshPublicChats: () => {
+      refreshFitChecks: () => {
         if (!isBackendEnabled) return
         const userId = get().authUserId
         if (!userId) return
         backend
-          .fetchPublicChats(userId)
-          .then(async (publicChats) => {
-            set({ publicChats })
-            // Outfit photos in a stranger's public fit check aren't in the
-            // store yet (they're not a friend's items).
+          .fetchFitChecks(userId)
+          .then(async (fitChecks) => {
+            set({ fitChecks })
+            // Pieces in a community fit check from a non-friend aren't in the
+            // store yet (they only became visible through the fit check).
             const known = new Set(get().items.map((i) => i.id))
-            const missing = [...new Set(publicChats.flatMap((c) => c.options.flatMap((o) => o.itemIds)))].filter((id) => !known.has(id))
+            const referenced = fitChecks.flatMap((c) => [
+              ...c.options.flatMap((o) => o.itemIds),
+              ...c.suggestions.flatMap((sg) => [...sg.itemIds, ...sg.lendItemIds]),
+            ])
+            const missing = [...new Set(referenced)].filter((id) => !known.has(id))
             const fetched = await backend.fetchItemsByIds(missing)
             if (fetched.length) set((s) => ({ items: [...s.items, ...fetched.filter((i) => !s.items.some((x) => x.id === i.id))] }))
           })
-          .catch((e) => report('refreshPublicChats', e))
+          .catch((e) => report('refreshFitChecks', e))
       },
       subscribeToFriendsRealtime: () => {
         if (!isBackendEnabled) return () => {}
@@ -589,115 +608,198 @@ export const useStore = create<BlueprintState>()(
         if (isBackendEnabled) backend.updateBorrowRequestStatus(requestId, 'returned').catch((e) => report('markReturned', e))
       },
 
+      saveFriendGroup: (input) => {
+        const group: FriendGroup = { id: input.id ?? id(), name: input.name.trim(), memberIds: input.memberIds }
+        set((s) => ({
+          friendGroups: s.friendGroups.some((g) => g.id === group.id)
+            ? s.friendGroups.map((g) => (g.id === group.id ? group : g))
+            : [...s.friendGroups, group],
+        }))
+        if (isBackendEnabled) backend.saveFriendGroup(get().authUserId!, group).catch((e) => report('saveFriendGroup', e))
+        return group.id
+      },
+      deleteFriendGroup: (groupId) => {
+        set((s) => ({ friendGroups: s.friendGroups.filter((g) => g.id !== groupId) }))
+        if (isBackendEnabled) backend.deleteFriendGroup(groupId).catch((e) => report('deleteFriendGroup', e))
+      },
+
       startFitCheck: (input) => {
         const newId = id()
         const me = get().authUserId ?? ME
-        const memberIds = isBackendEnabled ? [me, ...get().people.map((p) => p.id)] : [me, 'jules', 'amara', 'tessa', 'priya']
-        // Public fit checks are a public-profile feature (the DB enforces it too).
-        const audience: ChatAudience = get().user.isPublic ? input.audience : 'friends'
-        const optionA = { id: id(), label: 'Option A', itemIds: input.optionAItemIds, votes: 0 }
-        const optionB = { id: id(), label: 'Option B', itemIds: input.optionBItemIds, votes: 0 }
-        const chat: GroupChat = {
+        const { user, friendGroups } = get()
+        // Community is a public-profile feature that needs a verified school
+        // (the DB enforces both too); fall back to friends.
+        const audience: FitCheckAudience =
+          input.audience === 'community' && !(user.isPublic && user.communityId) ? 'friends' : input.audience
+        const group = audience === 'group' ? friendGroups.find((g) => g.id === input.groupId) : undefined
+        // Friends/community visibility is computed live from the friend graph;
+        // a group is snapshotted into the roster so later edits to the group
+        // don't change who can see an existing fit check.
+        const memberIds = group ? [me, ...group.memberIds] : [me]
+        const options =
+          input.mode === 'vote'
+            ? input.options.slice(0, 4).map((o, i) => ({
+                id: id(),
+                label: `Option ${'ABCD'[i]}`,
+                itemIds: o.itemIds,
+                photo: o.photo,
+              }))
+            : []
+        const now = new Date().toISOString()
+        const fitCheck: FitCheck = {
           id: newId,
-          title: input.eventName,
           eventName: input.eventName,
-          location: input.location,
-          eventTime: input.eventTime,
+          vibe: input.vibe,
+          weather: input.weather,
+          endsAt: input.endsAt,
           memberIds,
           createdBy: me,
           audience,
+          groupId: group?.id ?? null,
+          mode: input.mode,
           status: 'voting',
-          options: [optionA, optionB],
+          options: options.map((o) => ({
+            id: o.id,
+            label: o.label,
+            itemIds: o.itemIds,
+            imageUrl: o.photo ? URL.createObjectURL(o.photo) : null,
+            votes: 0,
+          })),
+          suggestions: [],
           comments: [],
           decidedOptionId: null,
-          votingClosesLabel: 'midnight',
+          decidedSuggestionId: null,
+          myVoteOptionId: null,
           lastMessagePreview: 'You started a fit check',
-          lastMessageAt: new Date().toISOString(),
+          lastMessageAt: now,
         }
-        set((s) => ({ chats: [chat, ...s.chats] }))
+        set((s) => ({ fitChecks: [fitCheck, ...s.fitChecks] }))
         if (isBackendEnabled) {
           backend
-            .insertChat({
+            .insertFitCheck({
               id: newId,
-              title: chat.title,
-              eventName: input.eventName,
-              location: input.location,
-              eventTime: input.eventTime,
               createdBy: me,
+              eventName: input.eventName,
+              vibe: input.vibe,
+              weather: input.weather,
+              endsAt: input.endsAt,
               audience,
+              groupId: fitCheck.groupId,
+              mode: input.mode,
               memberIds,
-              options: [optionA, optionB],
+              options,
+            })
+            // Swap the local photo previews for the real signed URLs.
+            .then(() => backend.fetchFitCheck(me, newId))
+            .then((fresh) => {
+              if (fresh) set((s) => ({ fitChecks: s.fitChecks.map((c) => (c.id === newId ? fresh : c)) }))
             })
             .catch((e) => report('startFitCheck', e))
         }
         return newId
       },
-      castVote: (chatId, optionId) => {
+      castVote: (fitCheckId, optionId) => {
+        // One vote per person; voting again moves it.
         set((s) => ({
-          chats: s.chats.map((c) =>
-            c.id === chatId
-              ? { ...c, options: c.options.map((o) => (o.id === optionId ? { ...o, votes: o.votes + 1 } : o)) }
-              : c,
-          ),
+          fitChecks: s.fitChecks.map((c) => {
+            if (c.id !== fitCheckId || c.myVoteOptionId === optionId) return c
+            return {
+              ...c,
+              myVoteOptionId: optionId,
+              options: c.options.map((o) => ({
+                ...o,
+                votes: o.votes + (o.id === optionId ? 1 : 0) - (o.id === c.myVoteOptionId ? 1 : 0),
+              })),
+            }
+          }),
         }))
         if (isBackendEnabled) {
           const userId = get().authUserId
-          if (userId) backend.castVoteRemote(chatId, userId, optionId).catch((e) => report('castVote', e))
+          if (userId) backend.castVoteRemote(fitCheckId, userId, optionId).catch((e) => report('castVote', e))
         }
       },
-      addComment: (chatId, text) => {
+      addComment: (fitCheckId, text) => {
         const newId = id()
         const authorId = get().authUserId ?? ME
+        const now = new Date().toISOString()
         set((s) => ({
-          chats: s.chats.map((c) =>
-            c.id === chatId
+          fitChecks: s.fitChecks.map((c) =>
+            c.id === fitCheckId
               ? {
                   ...c,
-                  comments: [...c.comments, { id: newId, authorId, text, createdAt: new Date().toISOString() }],
+                  comments: [...c.comments, { id: newId, authorId, text, createdAt: now }],
                   lastMessagePreview: `You: ${text}`,
-                  lastMessageAt: new Date().toISOString(),
+                  lastMessageAt: now,
                 }
               : c,
           ),
         }))
         if (isBackendEnabled) {
-          backend.insertChatComment(newId, chatId, authorId, text).catch((e) => report('addComment', e))
+          backend.insertChatComment(newId, fitCheckId, authorId, text).catch((e) => report('addComment', e))
         }
       },
-      decideChat: (chatId) => {
-        const chat = get().chats.find((c) => c.id === chatId)
-        if (!chat) return
-        const winner = chat.options.reduce((a, b) => (b.votes > a.votes ? b : a))
+      sendSuggestion: (fitCheckId, input) => {
+        const newId = id()
+        const authorId = get().authUserId ?? ME
+        const now = new Date().toISOString()
         set((s) => ({
-          chats: s.chats.map((c) =>
-            c.id === chatId ? { ...c, status: 'decided', decidedOptionId: winner.id, votingClosesLabel: 'closed' } : c,
+          fitChecks: s.fitChecks.map((c) =>
+            c.id === fitCheckId
+              ? {
+                  ...c,
+                  suggestions: [...c.suggestions, { id: newId, authorId, ...input, createdAt: now }],
+                  lastMessagePreview: 'You suggested a look',
+                  lastMessageAt: now,
+                }
+              : c,
           ),
         }))
-        if (isBackendEnabled) backend.updateChatDecided(chatId, winner.id).catch((e) => report('decideChat', e))
+        if (isBackendEnabled) {
+          backend.insertSuggestion({ id: newId, chatId: fitCheckId, authorId, ...input }).catch((e) => report('sendSuggestion', e))
+        }
       },
-      subscribeToChatRealtime: (chatId) => {
+      decideFitCheck: (fitCheckId, pick) => {
+        set((s) => ({
+          fitChecks: s.fitChecks.map((c) =>
+            c.id === fitCheckId
+              ? {
+                  ...c,
+                  status: 'decided',
+                  decidedOptionId: 'optionId' in pick ? pick.optionId : null,
+                  decidedSuggestionId: 'suggestionId' in pick ? pick.suggestionId : null,
+                }
+              : c,
+          ),
+        }))
+        if (isBackendEnabled) backend.updateFitCheckDecided(fitCheckId, pick).catch((e) => report('decideFitCheck', e))
+      },
+      subscribeToFitCheck: (fitCheckId) => {
         if (!isBackendEnabled) return () => {}
+        const userId = get().authUserId
+        if (!userId) return () => {}
         const refetch = async () => {
           try {
-            const fresh = await backend.fetchChatDetail(chatId)
+            const fresh = await backend.fetchFitCheck(userId, fitCheckId)
             if (!fresh) return
-            const upsert = (list: GroupChat[]) =>
-              list.some((c) => c.id === chatId) ? list.map((c) => (c.id === chatId ? fresh : c)) : [fresh, ...list]
-            const isMember = fresh.memberIds.includes(get().authUserId ?? '')
-            set((s) => (isMember ? { chats: upsert(s.chats) } : { publicChats: upsert(s.publicChats) }))
+            set((s) => ({
+              fitChecks: s.fitChecks.some((c) => c.id === fitCheckId)
+                ? s.fitChecks.map((c) => (c.id === fitCheckId ? fresh : c))
+                : [fresh, ...s.fitChecks],
+            }))
           } catch (err) {
-            report('subscribeToChatRealtime:refetch', err)
+            report('subscribeToFitCheck:refetch', err)
           }
         }
         refetch()
-        return backend.subscribeToChat(chatId, refetch)
+        return backend.subscribeToFitCheck(fitCheckId, refetch)
       },
     }),
     {
       name: 'blueprint-mvp-store',
-      // v2: location/community/privacy fields (0007). Older local-demo
-      // snapshots don't have them, so they're dropped for fresh seed data.
-      version: 2,
+      // v3: fit checks + friend groups (0008). v2: location/community/
+      // privacy (0007). Older local-demo snapshots are dropped for fresh
+      // seed data rather than migrated.
+      version: 3,
       migrate: () => ({}) as BlueprintState,
       // When a real backend is configured, auth + hydration are the source
       // of truth on every load — don't let a stale localStorage snapshot

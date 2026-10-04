@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { Screen } from '../components/Shell'
 import { Avatar, Badge, Eyebrow, Photo } from '../components/ui'
+import { OptionVisual } from '../components/FitCheckParts'
+import { closesLabel, isOpen, useNow } from '../lib/fitChecks'
 import { useStore } from '../store'
 import { useMyItems } from '../lib/selectors'
 import { closetImpact } from '../lib/impact'
@@ -10,12 +12,17 @@ export default function Home() {
   const nav = useNavigate()
   const user = useStore((s) => s.user)
   const items = useMyItems()
-  const chats = useStore((s) => s.chats)
+  const fitChecks = useStore((s) => s.fitChecks)
+  const now = useNow()
   const people = useStore((s) => s.people)
   const allItems = useStore((s) => s.items)
   const impact = closetImpact(items)
 
-  const votingChat = chats.find((c) => c.status === 'voting')
+  // Yours first, then the soonest-closing open one from anyone else.
+  const openChecks = fitChecks
+    .filter((c) => isOpen(c, now))
+    .sort((a, b) => Number(b.createdBy === user.id) - Number(a.createdBy === user.id) || (a.endsAt ?? '').localeCompare(b.endsAt ?? ''))
+  const live = openChecks[0]
   const lendableFromFriends = allItems
     .filter((i) => i.lendable && !i.isPrivate && people.some((p) => p.id === i.ownerId))
     .slice(0, 4)
@@ -49,43 +56,45 @@ export default function Home() {
           </p>
         </button>
 
-        {votingChat && (
+        {live && (
           <div className="mt-6">
             <div className="mb-2 flex items-center justify-between">
               <h2 className="font-heading text-lg font-semibold uppercase">Live Fit Check</h2>
               <Badge tone="light">
-                {votingChat.options.reduce((a, o) => a + o.votes, 0)} votes in
+                {live.mode === 'ideas'
+                  ? `${live.suggestions.length} idea${live.suggestions.length === 1 ? '' : 's'}`
+                  : `${live.options.reduce((a, o) => a + o.votes, 0)} votes in`}
               </Badge>
             </div>
             <button
-              onClick={() => nav(`/chats/${votingChat.id}`)}
+              onClick={() => nav(`/fit-checks/${live.id}`)}
               className="block w-full rounded-md border border-neutral-300 bg-white p-4 text-left"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-heading text-base font-semibold uppercase">{votingChat.title}</div>
-                  <div className="text-sm text-neutral-600">
-                    {votingChat.eventName} · {votingChat.location} · {votingChat.eventTime}
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-heading truncate text-base font-semibold uppercase">{live.eventName}</div>
+                  <div className="truncate text-sm text-neutral-600">
+                    {[live.vibe, closesLabel(live, now)].filter(Boolean).join(' · ')}
                   </div>
                 </div>
-                <Badge tone="accent">Vote Now</Badge>
+                <Badge tone="accent">{live.mode === 'ideas' ? 'Send ideas' : 'Vote now'}</Badge>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                {votingChat.options.slice(0, 2).map((o) => {
-                  const total = votingChat.options.reduce((a, b) => a + b.votes, 0) || 1
-                  const pct = Math.round((o.votes / total) * 100)
-                  const optionImage = allItems.find((i) => i.id === o.itemIds[0])?.imageUrl
-                  return (
-                    <div key={o.id} className="overflow-hidden rounded-md border border-neutral-300">
-                      <Photo src={optionImage} alt={o.label} className="h-28 w-full" />
-                      <div className="eyebrow bg-navy px-2 py-1 text-[10px] text-white">{o.label}</div>
-                      <div className="px-2 py-1 text-xs text-neutral-600">
-                        {o.votes} votes · {pct}%
+              {live.mode === 'vote' && (
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  {live.options.slice(0, 2).map((o) => {
+                    const total = live.options.reduce((a, b) => a + b.votes, 0) || 1
+                    return (
+                      <div key={o.id} className="overflow-hidden rounded-md border border-neutral-300">
+                        <OptionVisual option={o} items={allItems} className="h-28" />
+                        <div className="eyebrow bg-navy px-2 py-1 text-[10px] text-white">{o.label}</div>
+                        <div className="px-2 py-1 text-xs text-neutral-600">
+                          {o.votes} votes · {Math.round((o.votes / total) * 100)}%
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
             </button>
           </div>
         )}

@@ -4,6 +4,7 @@ import { Screen, TopBar } from '../components/Shell'
 import { Photo, PrimaryButton, StatTile } from '../components/ui'
 import { useItemById, usePersonById, useProximityLabel } from '../lib/selectors'
 import { borrowImpact } from '../lib/impact'
+import { useCanBorrow } from '../lib/fitChecks'
 import { useStore } from '../store'
 
 function formatCustomDate(isoDate: string) {
@@ -19,6 +20,7 @@ export default function BorrowRequest() {
   const owner = usePersonById(item?.ownerId)
   const sendBorrowRequest = useStore((s) => s.sendBorrowRequest)
   const ownerProximity = useProximityLabel(owner)
+  const canBorrow = useCanBorrow(itemId)
 
   const [when, setWhen] = useState<'ASAP' | 'date'>('ASAP')
   const [customDate, setCustomDate] = useState('')
@@ -27,9 +29,9 @@ export default function BorrowRequest() {
 
   const today = new Date().toISOString().slice(0, 10)
 
-  // Borrowing is friends-only and only for pieces opened to lending — the
-  // database enforces the same thing.
-  if (!item || !owner || !item.lendable) return null
+  // Borrowing is friends-only, for pieces opened to lending or offered to
+  // you in a fit-check suggestion — the database enforces the same thing.
+  if (!item || !owner || !canBorrow) return null
   const impact = borrowImpact(item.priceCents)
   const whenNeeded = when === 'ASAP' ? 'ASAP' : formatCustomDate(customDate)
 

@@ -14,8 +14,10 @@ import FriendsClosets from './screens/FriendsClosets'
 import FriendsList from './screens/FriendsList'
 import BorrowRequest from './screens/BorrowRequest'
 import Borrows from './screens/Borrows'
-import Chats from './screens/Chats'
-import LiveVote from './screens/LiveVote'
+import FitChecks from './screens/FitChecks'
+import FitCheckDetail from './screens/FitCheckDetail'
+import SuggestLook from './screens/SuggestLook'
+import { FriendGroups, GroupEditor } from './screens/FriendGroups'
 import ConfirmedLook from './screens/ConfirmedLook'
 import NewFitCheck from './screens/NewFitCheck'
 import ClosetImpact from './screens/ClosetImpact'
@@ -132,15 +134,15 @@ export default function App() {
           }
         />
         <Route
-          path="/chats"
+          path="/fit-checks"
           element={
             <AuthGate>
-              <Chats />
+              <FitChecks />
             </AuthGate>
           }
         />
         <Route
-          path="/chats/new"
+          path="/fit-checks/new"
           element={
             <AuthGate>
               <NewFitCheck />
@@ -148,21 +150,55 @@ export default function App() {
           }
         />
         <Route
-          path="/chats/:chatId"
+          path="/fit-checks/groups"
           element={
             <AuthGate>
-              <LiveVote />
+              <FriendGroups />
             </AuthGate>
           }
         />
         <Route
-          path="/chats/:chatId/confirmed"
+          path="/fit-checks/groups/new"
+          element={
+            <AuthGate>
+              <GroupEditor />
+            </AuthGate>
+          }
+        />
+        <Route
+          path="/fit-checks/groups/:groupId"
+          element={
+            <AuthGate>
+              <GroupEditor />
+            </AuthGate>
+          }
+        />
+        <Route
+          path="/fit-checks/:fitCheckId"
+          element={
+            <AuthGate>
+              <FitCheckDetail />
+            </AuthGate>
+          }
+        />
+        <Route
+          path="/fit-checks/:fitCheckId/suggest"
+          element={
+            <AuthGate>
+              <SuggestLook />
+            </AuthGate>
+          }
+        />
+        <Route
+          path="/fit-checks/:fitCheckId/confirmed"
           element={
             <AuthGate>
               <ConfirmedLook />
             </AuthGate>
           }
         />
+        {/* old links from before fit checks were renamed */}
+        <Route path="/chats/*" element={<Navigate to="/fit-checks" replace />} />
         <Route
           path="/closet-impact"
           element={

@@ -9,7 +9,7 @@ This repo is a clickable, fully interactive MVP built for an accelerator applica
 - **Onboarding** — join with any email, connect-your-closet pitch, profile setup (photo or initials monogram, residence hall or off-campus address, optional phone, public/private), optional school-email verification, Edit Profile for bio and everything else
 - **Digital closet** — categorized wardrobe grid, item detail with wear logging and cost-per-wear, "add item" via mocked Shop/Gmail import or manual camera entry
 - **Closet impact** — CO₂ avoided, water saved, textile waste avoided, wears-logged chart, hardest-working pieces, "sitting idle" lending suggestions
-- **Social fit checks** — start a fit check from your closet, group chat live voting, confirmed look
+- **Fit checks** — event, vibe/dress code, weather and an end time; share with a friend group, all friends, or (public profiles) your school community. Either post 2–4 options (closet pieces and/or a fit pic) for a live vote, or ask for ideas: friends browse your closet, suggest a look, and offer pieces of their own to lend. Ends in a confirmed look with a borrow hand-off for anything you don't own
 - **Peer-to-peer borrowing** — browse friends' closets, send a borrow request (with a live impact preview), approve/decline/return in the Borrows tab. The confirmed-look → "missing one piece" → borrow-request handoff is the centerpiece flow from the original design.
 - **Monetization** — Blueprint Plus upsell screen (mocked; no real payment is processed)
 
@@ -63,3 +63,7 @@ supabase secrets set RESEND_API_KEY=re_... EMAIL_FROM="Blueprint <verify@yourdom
 ```
 
 (Requires a [Resend](https://resend.com) account with your domain verified. Without a backend, the demo shows the code on screen instead.) If "Confirm email" is on, also add `<your site>/onboarding` under Authentication → URL Configuration → Redirect URLs.
+
+### Fit checks (migration 0008)
+
+Run [`0008_fit_checks.sql`](supabase/migrations/0008_fit_checks.sql) after 0007. It adds friend groups (owner-only), the fit-check fields (vibe, weather, end time, audience, mode), up to 4 options per fit check with optional fit pics in a private `fit-photos` storage bucket (read through signed URLs), and `fit_suggestions` for ideas mode. Voting and suggestions close at the end time on the database side too, only the creator can lock in a result, and a friend can borrow any piece they were offered in a suggestion even if it isn't marked lendable.

@@ -8,10 +8,12 @@ import type { Building } from '../data/buildings'
 import type {
   BorrowRequest,
   Category,
-  ChatAudience,
   ClothingItem,
   CurrentUser,
-  GroupChat,
+  FitCheck,
+  FitCheckAudience,
+  FitCheckMode,
+  FriendGroup,
   Location,
   OffCampusAddress,
   Person,
@@ -542,147 +544,189 @@ export async function respondToFriendRequest(requesterId: string, addresseeId: s
   if (error) throw error
 }
 
-// ── chats ───────────────────────────────────────────────────────────────
+// ── fit checks (the chats tables) ───────────────────────────────────────
 
 type ChatRow = {
   id: string
-  title: string
   event_name: string
-  location: string
-  event_time: string
-  status: GroupChat['status']
+  vibe: string
+  weather: string
+  ends_at: string | null
+  status: FitCheck['status']
   decided_option_id: string | null
-  voting_closes_label: string
+  decided_suggestion_id: string | null
   created_by: string
-  audience: ChatAudience
+  audience: FitCheckAudience
+  group_id: string | null
+  mode: FitCheckMode
   created_at: string
 }
 type ChatMemberRow = { chat_id: string; user_id: string }
-type ChatOptionRow = { id: string; chat_id: string; label: string; item_ids: string[] }
+type ChatOptionRow = { id: string; chat_id: string; label: string; item_ids: string[]; image_path: string | null; position: number }
 type VoteRow = { chat_id: string; user_id: string; option_id: string }
 type ChatCommentRow = { id: string; chat_id: string; author_id: string; text: string; created_at: string }
+type SuggestionRow = {
+  id: string
+  chat_id: string
+  author_id: string
+  item_ids: string[]
+  lend_item_ids: string[]
+  note: string
+  created_at: string
+}
 
-function assembleChats(
-  chats: ChatRow[],
-  members: ChatMemberRow[],
-  options: ChatOptionRow[],
-  votes: VoteRow[],
-  comments: ChatCommentRow[],
-  participants: Person[],
-): GroupChat[] {
+// Fit pics live in a private bucket; viewers get short-lived signed URLs.
+const FIT_PHOTO_BUCKET = 'fit-photos'
+const SIGNED_URL_SECONDS = 60 * 60
+
+async function signFitPhotos(paths: string[]): Promise<Map<string, string>> {
+  if (paths.length === 0) return new Map()
+  const { data, error } = await db().storage.from(FIT_PHOTO_BUCKET).createSignedUrls(paths, SIGNED_URL_SECONDS)
+  if (error) throw error
+  return new Map(data.flatMap((d) => (d.path && d.signedUrl ? [[d.path, d.signedUrl] as [string, string]] : [])))
+}
+
+async function fetchFitCheckBundle(userId: string, chatIds: string[]): Promise<FitCheck[]> {
+  if (chatIds.length === 0) return []
+  const [chatsRes, membersRes, optionsRes, votesRes, commentsRes, suggestionsRes] = await Promise.all([
+    db().from('chats').select('*').in('id', chatIds),
+    db().from('chat_members').select('*').in('chat_id', chatIds),
+    db().from('chat_options').select('*').in('chat_id', chatIds).order('position'),
+    db().from('votes').select('*').in('chat_id', chatIds),
+    db().from('chat_comments').select('*').in('chat_id', chatIds).order('created_at'),
+    db().from('fit_suggestions').select('*').in('chat_id', chatIds).order('created_at'),
+  ])
+  for (const r of [chatsRes, membersRes, optionsRes, votesRes, commentsRes, suggestionsRes]) if (r.error) throw r.error
+  const chats = chatsRes.data as ChatRow[]
+  const members = membersRes.data as ChatMemberRow[]
+  const options = optionsRes.data as ChatOptionRow[]
+  const votes = votesRes.data as VoteRow[]
+  const comments = commentsRes.data as ChatCommentRow[]
+  const suggestions = suggestionsRes.data as SuggestionRow[]
+
+  const participantIds = new Set<string>()
+  for (const c of chats) participantIds.add(c.created_by)
+  for (const m of members) participantIds.add(m.user_id)
+  for (const cm of comments) participantIds.add(cm.author_id)
+  for (const sg of suggestions) participantIds.add(sg.author_id)
+  const [participants, photoUrls] = await Promise.all([
+    fetchProfilesByIds([...participantIds]),
+    signFitPhotos(options.map((o) => o.image_path).filter((p): p is string => Boolean(p))),
+  ])
+  const nameOf = (id: string) => participants.find((p) => p.id === id)?.name.split(' ')[0] ?? 'Someone'
+
   return chats.map((c) => {
-    const chatOptions = options.filter((o) => o.chat_id === c.id)
+    const chatComments = comments.filter((cm) => cm.chat_id === c.id)
+    const chatSuggestions = suggestions.filter((sg) => sg.chat_id === c.id)
     const chatVotes = votes.filter((v) => v.chat_id === c.id)
-    const chatComments = [...comments.filter((cm) => cm.chat_id === c.id)].sort((a, b) => (a.created_at < b.created_at ? -1 : 1))
     const lastComment = chatComments[chatComments.length - 1]
+    const lastSuggestion = chatSuggestions[chatSuggestions.length - 1]
+    const latest =
+      lastSuggestion && (!lastComment || lastSuggestion.created_at > lastComment.created_at)
+        ? { at: lastSuggestion.created_at, text: `${nameOf(lastSuggestion.author_id)} suggested a look` }
+        : lastComment
+          ? { at: lastComment.created_at, text: `${nameOf(lastComment.author_id)}: ${lastComment.text}` }
+          : { at: c.created_at, text: `${nameOf(c.created_by)} started a fit check` }
     return {
       id: c.id,
-      title: c.title,
       eventName: c.event_name,
-      location: c.location,
-      eventTime: c.event_time,
+      vibe: c.vibe,
+      weather: c.weather,
+      endsAt: c.ends_at,
       memberIds: members.filter((m) => m.chat_id === c.id).map((m) => m.user_id),
       createdBy: c.created_by,
       audience: c.audience,
+      groupId: c.group_id,
+      mode: c.mode,
       participants: participants.map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl })),
       status: c.status,
-      options: chatOptions.map((o) => ({
-        id: o.id,
-        label: o.label,
-        itemIds: o.item_ids,
-        votes: chatVotes.filter((v) => v.option_id === o.id).length,
+      options: options
+        .filter((o) => o.chat_id === c.id)
+        .map((o) => ({
+          id: o.id,
+          label: o.label,
+          itemIds: o.item_ids,
+          imageUrl: o.image_path ? (photoUrls.get(o.image_path) ?? null) : null,
+          votes: chatVotes.filter((v) => v.option_id === o.id).length,
+        })),
+      suggestions: chatSuggestions.map((sg) => ({
+        id: sg.id,
+        authorId: sg.author_id,
+        itemIds: sg.item_ids,
+        lendItemIds: sg.lend_item_ids,
+        note: sg.note,
+        createdAt: sg.created_at,
       })),
       comments: chatComments.map((cm) => ({ id: cm.id, authorId: cm.author_id, text: cm.text, createdAt: cm.created_at })),
       decidedOptionId: c.decided_option_id,
-      votingClosesLabel: c.voting_closes_label,
-      lastMessagePreview: lastComment ? lastComment.text : 'Fit check posted',
-      lastMessageAt: lastComment ? lastComment.created_at : c.created_at,
+      decidedSuggestionId: c.decided_suggestion_id,
+      myVoteOptionId: chatVotes.find((v) => v.user_id === userId)?.option_id ?? null,
+      lastMessagePreview: latest.text,
+      lastMessageAt: latest.at,
     }
   })
 }
 
-async function fetchChatBundle(filterChatIds: string[]) {
-  const [chatsRes, membersRes, optionsRes, votesRes, commentsRes] = await Promise.all([
-    db().from('chats').select('*').in('id', filterChatIds),
-    db().from('chat_members').select('*').in('chat_id', filterChatIds),
-    db().from('chat_options').select('*').in('chat_id', filterChatIds),
-    db().from('votes').select('*').in('chat_id', filterChatIds),
-    db().from('chat_comments').select('*').in('chat_id', filterChatIds),
-  ])
-  for (const r of [chatsRes, membersRes, optionsRes, votesRes, commentsRes]) if (r.error) throw r.error
-  const participantIds = new Set<string>()
-  for (const c of chatsRes.data as ChatRow[]) participantIds.add(c.created_by)
-  for (const m of membersRes.data as ChatMemberRow[]) participantIds.add(m.user_id)
-  const participants = await fetchProfilesByIds([...participantIds])
-  return assembleChats(
-    chatsRes.data as ChatRow[],
-    membersRes.data as ChatMemberRow[],
-    optionsRes.data as ChatOptionRow[],
-    votesRes.data as VoteRow[],
-    commentsRes.data as ChatCommentRow[],
-    participants,
-  )
-}
-
-export async function fetchMyChats(userId: string): Promise<GroupChat[]> {
-  const { data: memberRows, error } = await db().from('chat_members').select('chat_id').eq('user_id', userId)
+// Every fit check this user can see — RLS (can_view_chat) does the
+// filtering: their own, their groups', their friends', and public-profile
+// ones from their school community.
+export async function fetchFitChecks(userId: string, limit = 50): Promise<FitCheck[]> {
+  const { data, error } = await db().from('chats').select('id').order('created_at', { ascending: false }).limit(limit)
   if (error) throw error
-  const chatIds = (memberRows as { chat_id: string }[]).map((r) => r.chat_id)
-  if (chatIds.length === 0) return []
-  return fetchChatBundle(chatIds)
+  return fetchFitCheckBundle(userId, (data as { id: string }[]).map((r) => r.id))
 }
 
-// Public fit checks you're not part of — RLS (can_view_chat) already drops
-// any whose creator has since gone private.
-export async function fetchPublicChats(userId: string, limit = 20): Promise<GroupChat[]> {
-  const { data: mine, error: e1 } = await db().from('chat_members').select('chat_id').eq('user_id', userId)
-  if (e1) throw e1
-  const myIds = new Set((mine as { chat_id: string }[]).map((r) => r.chat_id))
-  const { data, error } = await db()
-    .from('chats')
-    .select('id')
-    .eq('audience', 'public')
-    .order('created_at', { ascending: false })
-    .limit(limit + myIds.size)
-  if (error) throw error
-  const ids = (data as { id: string }[]).map((r) => r.id).filter((id) => !myIds.has(id)).slice(0, limit)
-  if (ids.length === 0) return []
-  return fetchChatBundle(ids)
+export async function fetchFitCheck(userId: string, chatId: string): Promise<FitCheck | null> {
+  const [fc] = await fetchFitCheckBundle(userId, [chatId])
+  return fc ?? null
 }
 
-export async function fetchChatDetail(chatId: string): Promise<GroupChat | null> {
-  const chats = await fetchChatBundle([chatId])
-  return chats[0] ?? null
-}
-
-export async function insertChat(input: {
+export async function insertFitCheck(input: {
   id: string
-  title: string
-  eventName: string
-  location: string
-  eventTime: string
   createdBy: string
-  audience: ChatAudience
+  eventName: string
+  vibe: string
+  weather: string
+  endsAt: string | null
+  audience: FitCheckAudience
+  groupId: string | null
+  mode: FitCheckMode
   memberIds: string[]
-  options: { id: string; label: string; itemIds: string[] }[]
+  options: { id: string; label: string; itemIds: string[]; photo: File | null }[]
 }) {
   const { error: e1 } = await db().from('chats').insert({
     id: input.id,
-    title: input.title,
+    title: input.eventName,
     event_name: input.eventName,
-    location: input.location,
-    event_time: input.eventTime,
-    created_by: input.createdBy,
+    vibe: input.vibe,
+    weather: input.weather,
+    ends_at: input.endsAt,
     audience: input.audience,
+    group_id: input.groupId,
+    mode: input.mode,
+    created_by: input.createdBy,
   })
   if (e1) throw e1
   const { error: e2 } = await db()
     .from('chat_members')
     .insert(input.memberIds.map((userId) => ({ chat_id: input.id, user_id: userId })))
   if (e2) throw e2
-  const { error: e3 } = await db()
-    .from('chat_options')
-    .insert(input.options.map((o) => ({ id: o.id, chat_id: input.id, label: o.label, item_ids: o.itemIds })))
+  if (input.options.length === 0) return
+
+  // Upload fit pics first (the storage policy only needs the chat row), so
+  // each option row lands with its photo already in place.
+  const rows = await Promise.all(
+    input.options.map(async (o, position) => {
+      let image_path: string | null = null
+      if (o.photo) {
+        image_path = `${input.id}/${o.id}.${fileExtension(o.photo)}`
+        const { error } = await db().storage.from(FIT_PHOTO_BUCKET).upload(image_path, o.photo, { contentType: o.photo.type })
+        if (error) throw error
+      }
+      return { id: o.id, chat_id: input.id, label: o.label, item_ids: o.itemIds, image_path, position }
+    }),
+  )
+  const { error: e3 } = await db().from('chat_options').insert(rows)
   if (e3) throw e3
 }
 
@@ -698,26 +742,84 @@ export async function insertChatComment(id: string, chatId: string, authorId: st
   if (error) throw error
 }
 
-export async function updateChatDecided(chatId: string, decidedOptionId: string) {
+export async function insertSuggestion(input: {
+  id: string
+  chatId: string
+  authorId: string
+  itemIds: string[]
+  lendItemIds: string[]
+  note: string
+}) {
+  const { error } = await db().from('fit_suggestions').insert({
+    id: input.id,
+    chat_id: input.chatId,
+    author_id: input.authorId,
+    item_ids: input.itemIds,
+    lend_item_ids: input.lendItemIds,
+    note: input.note,
+  })
+  if (error) throw error
+}
+
+export async function updateFitCheckDecided(chatId: string, pick: { optionId: string } | { suggestionId: string }) {
   const { error } = await db()
     .from('chats')
-    .update({ status: 'decided', decided_option_id: decidedOptionId, voting_closes_label: 'closed' })
+    .update({
+      status: 'decided',
+      decided_option_id: 'optionId' in pick ? pick.optionId : null,
+      decided_suggestion_id: 'suggestionId' in pick ? pick.suggestionId : null,
+    })
     .eq('id', chatId)
   if (error) throw error
 }
 
-// Live votes/comments for one chat. RLS still applies per-subscriber, so
-// this only ever fires for chats the caller is actually a member of.
-export function subscribeToChat(chatId: string, onChange: () => void) {
+// Live votes/comments/suggestions for one fit check. RLS still applies
+// per-subscriber, so this only fires for fit checks the caller can see.
+export function subscribeToFitCheck(chatId: string, onChange: () => void) {
   const channel = db()
-    .channel(`chat-${chatId}`)
+    .channel(`fit-check-${chatId}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'votes', filter: `chat_id=eq.${chatId}` }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_comments', filter: `chat_id=eq.${chatId}` }, onChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'fit_suggestions', filter: `chat_id=eq.${chatId}` }, onChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'chats', filter: `id=eq.${chatId}` }, onChange)
     .subscribe()
   return () => {
     db().removeChannel(channel)
   }
+}
+
+// ── friend groups ───────────────────────────────────────────────────────
+
+export async function fetchFriendGroups(userId: string): Promise<FriendGroup[]> {
+  const { data, error } = await db()
+    .from('friend_groups')
+    .select('id, name, friend_group_members(user_id)')
+    .eq('owner_id', userId)
+    .order('created_at')
+  if (error) throw error
+  return (data as { id: string; name: string; friend_group_members: { user_id: string }[] }[]).map((g) => ({
+    id: g.id,
+    name: g.name,
+    memberIds: g.friend_group_members.map((m) => m.user_id),
+  }))
+}
+
+// Upsert the group, then make its roster exactly memberIds.
+export async function saveFriendGroup(userId: string, group: FriendGroup) {
+  const { error: e1 } = await db().from('friend_groups').upsert({ id: group.id, owner_id: userId, name: group.name })
+  if (e1) throw e1
+  const { error: e2 } = await db().from('friend_group_members').delete().eq('group_id', group.id)
+  if (e2) throw e2
+  if (group.memberIds.length === 0) return
+  const { error: e3 } = await db()
+    .from('friend_group_members')
+    .insert(group.memberIds.map((user_id) => ({ group_id: group.id, user_id })))
+  if (e3) throw e3
+}
+
+export async function deleteFriendGroup(groupId: string) {
+  const { error } = await db().from('friend_groups').delete().eq('id', groupId)
+  if (error) throw error
 }
 
 // Live friend requests/acceptances/declines involving this user — either

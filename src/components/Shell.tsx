@@ -28,7 +28,7 @@ function StatusBar() {
 const tabs = [
   { to: '/home', label: 'Home' },
   { to: '/closet', label: 'Closet' },
-  { to: '/chats', label: 'Chats' },
+  { to: '/fit-checks', label: 'Fit Checks' },
   { to: '/borrows', label: 'Borrows' },
   { to: '/profile', label: 'Profile' },
 ]
