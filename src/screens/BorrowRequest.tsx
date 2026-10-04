@@ -2,9 +2,8 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
 import { Photo, PrimaryButton, StatTile } from '../components/ui'
-import { useItemById, usePersonById } from '../lib/selectors'
+import { useItemById, usePersonById, useProximityLabel } from '../lib/selectors'
 import { borrowImpact } from '../lib/impact'
-import { proximityLabel } from '../lib/proximity'
 import { useStore } from '../store'
 
 function formatCustomDate(isoDate: string) {
@@ -19,7 +18,7 @@ export default function BorrowRequest() {
   const item = useItemById(itemId)
   const owner = usePersonById(item?.ownerId)
   const sendBorrowRequest = useStore((s) => s.sendBorrowRequest)
-  const user = useStore((s) => s.user)
+  const ownerProximity = useProximityLabel(owner)
 
   const [when, setWhen] = useState<'ASAP' | 'date'>('ASAP')
   const [customDate, setCustomDate] = useState('')
@@ -28,7 +27,9 @@ export default function BorrowRequest() {
 
   const today = new Date().toISOString().slice(0, 10)
 
-  if (!item || !owner) return null
+  // Borrowing is friends-only and only for pieces opened to lending — the
+  // database enforces the same thing.
+  if (!item || !owner || !item.lendable) return null
   const impact = borrowImpact(item.priceCents)
   const whenNeeded = when === 'ASAP' ? 'ASAP' : formatCustomDate(customDate)
 
@@ -39,7 +40,7 @@ export default function BorrowRequest() {
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-8 text-center">
           <div className="font-heading text-2xl font-semibold uppercase">Request sent</div>
           <p className="mt-2 text-sm text-neutral-600">
-            {owner.name} will see this in her Borrows tab. You'll get a nudge when she responds.
+            {owner.name} will see this in their Borrows tab. You'll get a nudge when they respond.
           </p>
           <PrimaryButton className="mt-6" onClick={() => nav('/borrows')}>
             View my borrows
@@ -54,7 +55,7 @@ export default function BorrowRequest() {
       <TopBar title="Borrow Request" onBack={() => nav(-1)} />
       <div className="px-5 py-5">
         <p className="eyebrow text-xs text-neutral-600">
-          From {owner.name} · {proximityLabel(user, owner)}
+          From {owner.name} · {ownerProximity}
         </p>
 
         <div className="mt-3 flex gap-3 rounded-md border border-neutral-300 bg-white p-3">

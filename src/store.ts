@@ -3,19 +3,51 @@ import { persist } from 'zustand/middleware'
 import type {
   BorrowRequest,
   Category,
+  ChatAudience,
   ClothingItem,
   CurrentUser,
   GroupChat,
+  Location,
+  OffCampusAddress,
   Person,
   WearLogEntry,
 } from './types'
-import { ME, seedBorrowRequests, seedChats, seedItems, seedPeople, seedUser, seedWearLog } from './data/seed'
+import {
+  ME,
+  seedBorrowRequests,
+  seedChats,
+  seedItems,
+  seedOffCampusDistances,
+  seedPeople,
+  seedUser,
+  seedWearLog,
+} from './data/seed'
+import { BUILDINGS, type Building } from './data/buildings'
+import { matchSchoolDomain } from './data/communities'
 import { isBackendEnabled } from './lib/supabaseClient'
 import * as backend from './lib/backendApi'
+import { coordsFor, haversineMeters } from './lib/proximity'
 
 function id() {
   return crypto.randomUUID()
 }
+
+// Local demo only: the same distances friend_distances() returns, computed
+// from building coordinates (and rounded to 100 m the same way).
+function localDistances(user: CurrentUser, people: Person[], buildings: Building[]): Record<string, number> {
+  const mine = coordsFor(user, buildings)
+  const out: Record<string, number> = {}
+  if (!mine) return out
+  for (const p of people) {
+    const theirs = coordsFor(p, buildings)
+    if (theirs) out[p.id] = Math.round(haversineMeters(mine, theirs) / 100) * 100
+    else if (seedOffCampusDistances[p.id] !== undefined) out[p.id] = seedOffCampusDistances[p.id]
+  }
+  return out
+}
+
+// Local demo only: the code a real deployment would have emailed.
+let demoSchoolCode: { email: string; code: string } | null = null
 
 function report(action: string, err: unknown) {
   // Local state has already been updated optimistically by the time this
@@ -33,7 +65,9 @@ interface BlueprintState {
   authUserId: string | null
   authError: string | null
   initAuth: () => void
-  signUp: (input: { email: string; password: string; name: string; handle: string; school: string }) => Promise<void>
+  // Resolves with whether the new account must confirm its email before it
+  // can sign in (Supabase "Confirm email" setting).
+  signUp: (input: { email: string; password: string; name: string; handle: string }) => Promise<{ needsEmailConfirmation: boolean }>
   signIn: (input: { email: string; password: string }) => Promise<void>
   signOut: () => Promise<void>
 
@@ -41,8 +75,13 @@ interface BlueprintState {
   people: Person[] // your accepted friends once a backend is connected
   items: ClothingItem[]
   borrowRequests: BorrowRequest[]
-  chats: GroupChat[]
+  chats: GroupChat[] // fit checks you're a member of
+  publicChats: GroupChat[] // public fit checks from people outside them
   wearLog: WearLogEntry[]
+  buildings: Building[] // from the buildings table once a backend is connected
+  distances: Record<string, number> // friend id -> meters (rounded to 100)
+  refreshDistances: () => void
+  refreshPublicChats: () => void
 
   // friend graph — no-ops against local mock data (the 4 seed people are
   // already "friends" there); real once a backend is connected
@@ -61,7 +100,14 @@ interface BlueprintState {
   setPublic: (isPublic: boolean) => void
   connectShop: () => void
   connectGmail: () => void
-  setProfile: (patch: Partial<Pick<CurrentUser, 'name' | 'handle' | 'school' | 'classYear' | 'building' | 'floor'>>) => void
+  setProfile: (patch: Partial<Pick<CurrentUser, 'name' | 'handle' | 'bio'>>) => void
+  setLocation: (loc: Location, offCampusAddress: OffCampusAddress | null) => void
+  setPhone: (phone: string) => void
+  // School community: emails a code to a .edu address, then checks it.
+  // In the local demo nothing is emailed — demoCode is returned instead so
+  // the screen can show it.
+  sendSchoolCode: (email: string) => Promise<{ demoCode?: string }>
+  verifySchoolCode: (code: string) => Promise<backend.VerifyResult>
   upgradeToPlus: () => void
   // Local-preview immediately, then uploads to Storage and persists the
   // real URL when a backend is connected. No-op upload (preview only,
@@ -80,6 +126,7 @@ interface BlueprintState {
   }) => string
   logWear: (itemId: string) => void
   toggleLendable: (itemId: string) => void
+  setItemPrivate: (itemId: string, isPrivate: boolean) => void
   uploadItemImage: (itemId: string, file: File) => Promise<void>
 
   // borrowing
@@ -99,6 +146,7 @@ interface BlueprintState {
     eventTime: string
     optionAItemIds: string[]
     optionBItemIds: string[]
+    audience: ChatAudience
   }) => string
   castVote: (chatId: string, optionId: string) => void
   addComment: (chatId: string, text: string) => void
@@ -120,7 +168,10 @@ export const useStore = create<BlueprintState>()(
       items: seedItems,
       borrowRequests: seedBorrowRequests,
       chats: seedChats,
+      publicChats: [],
       wearLog: seedWearLog,
+      buildings: BUILDINGS,
+      distances: localDistances(seedUser, seedPeople, BUILDINGS),
 
       friendRequestsIncoming: [],
       friendRequestsOutgoingIds: [],
@@ -134,15 +185,17 @@ export const useStore = create<BlueprintState>()(
             return
           }
           try {
-            const [user, myItems, discoverable, borrowRequests, chats, friends] = await Promise.all([
+            const [user, myItems, visible, borrowRequests, chats, friends, buildings, distances] = await Promise.all([
               backend.fetchProfile(userId),
               backend.fetchMyItems(userId),
-              backend.fetchDiscoverableItems(userId),
+              backend.fetchVisibleItems(userId),
               backend.fetchBorrowRequests(userId),
               backend.fetchMyChats(userId),
               backend.fetchFriends(userId),
+              backend.fetchBuildings(),
+              backend.fetchFriendDistances(),
             ])
-            const items = [...myItems, ...discoverable]
+            const items = [...myItems, ...visible]
             const wearLog = await backend.fetchWearLog(myItems.map((i) => i.id))
             set({
               user,
@@ -151,6 +204,8 @@ export const useStore = create<BlueprintState>()(
               borrowRequests,
               chats,
               people: friends,
+              buildings: buildings.length > 0 ? buildings : BUILDINGS,
+              distances,
               authStatus: 'authenticated',
               authUserId: userId,
             })
@@ -165,7 +220,7 @@ export const useStore = create<BlueprintState>()(
       signUp: async (input) => {
         set({ authError: null })
         try {
-          await backend.signUp(input)
+          return await backend.signUp(input)
         } catch (err) {
           set({ authError: err instanceof Error ? err.message : 'Sign up failed' })
           throw err
@@ -214,7 +269,41 @@ export const useStore = create<BlueprintState>()(
         }))
         backend
           .respondToFriendRequest(personId, userId, decision)
+          .then(async () => {
+            if (decision !== 'accepted') return
+            // Their location and closet only became readable just now.
+            const [friends, visible] = await Promise.all([backend.fetchFriends(userId), backend.fetchVisibleItems(userId)])
+            set((s) => ({ people: friends, items: [...s.items.filter((i) => i.ownerId === userId), ...visible] }))
+            get().refreshDistances()
+          })
           .catch((e) => report('respondToFriendRequest', e))
+      },
+      refreshDistances: () => {
+        if (!isBackendEnabled) {
+          set((s) => ({ distances: localDistances(s.user, s.people, s.buildings) }))
+          return
+        }
+        backend
+          .fetchFriendDistances()
+          .then((distances) => set({ distances }))
+          .catch((e) => report('refreshDistances', e))
+      },
+      refreshPublicChats: () => {
+        if (!isBackendEnabled) return
+        const userId = get().authUserId
+        if (!userId) return
+        backend
+          .fetchPublicChats(userId)
+          .then(async (publicChats) => {
+            set({ publicChats })
+            // Outfit photos in a stranger's public fit check aren't in the
+            // store yet (they're not a friend's items).
+            const known = new Set(get().items.map((i) => i.id))
+            const missing = [...new Set(publicChats.flatMap((c) => c.options.flatMap((o) => o.itemIds)))].filter((id) => !known.has(id))
+            const fetched = await backend.fetchItemsByIds(missing)
+            if (fetched.length) set((s) => ({ items: [...s.items, ...fetched.filter((i) => !s.items.some((x) => x.id === i.id))] }))
+          })
+          .catch((e) => report('refreshPublicChats', e))
       },
       subscribeToFriendsRealtime: () => {
         if (!isBackendEnabled) return () => {}
@@ -252,6 +341,7 @@ export const useStore = create<BlueprintState>()(
           timesLent: 0,
           alwaysReturned: true,
           imageUrl: null,
+          isPrivate: false,
         }
         set((s) => ({ items: [imported, ...s.items] }))
         if (isBackendEnabled) {
@@ -282,6 +372,7 @@ export const useStore = create<BlueprintState>()(
           timesLent: 0,
           alwaysReturned: true,
           imageUrl: null,
+          isPrivate: false,
         }
         set((s) => ({ items: [imported, ...s.items] }))
         if (isBackendEnabled) {
@@ -297,12 +388,60 @@ export const useStore = create<BlueprintState>()(
           const dbPatch: Record<string, unknown> = {}
           if (patch.name !== undefined) dbPatch.name = patch.name
           if (patch.handle !== undefined) dbPatch.handle = patch.handle
-          if (patch.school !== undefined) dbPatch.school = patch.school
-          if (patch.classYear !== undefined) dbPatch.class_year = patch.classYear
-          if (patch.building !== undefined) dbPatch.building = patch.building
-          if (patch.floor !== undefined) dbPatch.floor = patch.floor
+          if (patch.bio !== undefined) dbPatch.bio = patch.bio
           backend.updateProfile(get().authUserId!, dbPatch).catch((e) => report('setProfile', e))
         }
+      },
+      setLocation: (loc, offCampusAddress) => {
+        const address = loc.offCampus ? offCampusAddress : null
+        set((s) => ({ user: { ...s.user, ...loc, offCampusAddress: address } }))
+        if (!isBackendEnabled) {
+          get().refreshDistances()
+          return
+        }
+        backend
+          .saveLocation(get().authUserId!, loc, address)
+          .then(() => get().refreshDistances())
+          .catch((e) => report('setLocation', e))
+      },
+      setPhone: (phone) => {
+        set((s) => ({ user: { ...s.user, phone } }))
+        if (isBackendEnabled) backend.savePhone(get().authUserId!, phone).catch((e) => report('setPhone', e))
+      },
+      sendSchoolCode: async (email) => {
+        const normalized = email.trim().toLowerCase()
+        if (isBackendEnabled) {
+          await backend.sendSchoolCode(normalized)
+          set((s) => ({ user: { ...s.user, pendingSchoolEmail: normalized } }))
+          return {}
+        }
+        if (!matchSchoolDomain(normalized)) {
+          throw new Error("That school isn't on Blueprint yet — right now it's Columbia and Barnard emails only.")
+        }
+        const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0')
+        demoSchoolCode = { email: normalized, code }
+        set((s) => ({ user: { ...s.user, pendingSchoolEmail: normalized } }))
+        return { demoCode: code }
+      },
+      verifySchoolCode: async (code) => {
+        if (isBackendEnabled) {
+          const result = await backend.verifySchoolCode(code)
+          if (result === 'verified') {
+            const user = await backend.fetchProfile(get().authUserId!)
+            set({ user })
+            get().refreshFriendData()
+          }
+          return result
+        }
+        if (!demoSchoolCode) return 'no_pending'
+        if (code.trim() !== demoSchoolCode.code) return 'incorrect'
+        const match = matchSchoolDomain(demoSchoolCode.email)!
+        const email = demoSchoolCode.email
+        demoSchoolCode = null
+        set((s) => ({
+          user: { ...s.user, schoolEmail: email, pendingSchoolEmail: null, communityId: match.communityId, school: match.schoolName },
+        }))
+        return 'verified'
       },
       uploadAvatar: async (file) => {
         const previewUrl = URL.createObjectURL(file)
@@ -342,6 +481,7 @@ export const useStore = create<BlueprintState>()(
           timesLent: 0,
           alwaysReturned: true,
           imageUrl: null,
+          isPrivate: false,
         }
         set((s) => ({ items: [item, ...s.items] }))
         if (isBackendEnabled) {
@@ -376,9 +516,17 @@ export const useStore = create<BlueprintState>()(
         }
       },
       toggleLendable: (itemId) => {
-        const next = !get().items.find((i) => i.id === itemId)?.lendable
-        set((s) => ({ items: s.items.map((i) => (i.id === itemId ? { ...i, lendable: !i.lendable } : i)) }))
+        const item = get().items.find((i) => i.id === itemId)
+        if (!item || item.isPrivate) return // private items can't be lent — nobody else can see them
+        const next = !item.lendable
+        set((s) => ({ items: s.items.map((i) => (i.id === itemId ? { ...i, lendable: next } : i)) }))
         if (isBackendEnabled) backend.updateItemLendable(itemId, next).catch((e) => report('toggleLendable', e))
+      },
+      setItemPrivate: (itemId, isPrivate) => {
+        set((s) => ({
+          items: s.items.map((i) => (i.id === itemId ? { ...i, isPrivate, lendable: isPrivate ? false : i.lendable } : i)),
+        }))
+        if (isBackendEnabled) backend.updateItemPrivacy(itemId, isPrivate).catch((e) => report('setItemPrivate', e))
       },
       uploadItemImage: async (itemId, file) => {
         const previewUrl = URL.createObjectURL(file)
@@ -445,6 +593,8 @@ export const useStore = create<BlueprintState>()(
         const newId = id()
         const me = get().authUserId ?? ME
         const memberIds = isBackendEnabled ? [me, ...get().people.map((p) => p.id)] : [me, 'jules', 'amara', 'tessa', 'priya']
+        // Public fit checks are a public-profile feature (the DB enforces it too).
+        const audience: ChatAudience = get().user.isPublic ? input.audience : 'friends'
         const optionA = { id: id(), label: 'Option A', itemIds: input.optionAItemIds, votes: 0 }
         const optionB = { id: id(), label: 'Option B', itemIds: input.optionBItemIds, votes: 0 }
         const chat: GroupChat = {
@@ -454,6 +604,8 @@ export const useStore = create<BlueprintState>()(
           location: input.location,
           eventTime: input.eventTime,
           memberIds,
+          createdBy: me,
+          audience,
           status: 'voting',
           options: [optionA, optionB],
           comments: [],
@@ -472,6 +624,7 @@ export const useStore = create<BlueprintState>()(
               location: input.location,
               eventTime: input.eventTime,
               createdBy: me,
+              audience,
               memberIds,
               options: [optionA, optionB],
             })
@@ -528,9 +681,10 @@ export const useStore = create<BlueprintState>()(
           try {
             const fresh = await backend.fetchChatDetail(chatId)
             if (!fresh) return
-            set((s) => ({
-              chats: s.chats.some((c) => c.id === chatId) ? s.chats.map((c) => (c.id === chatId ? fresh : c)) : [fresh, ...s.chats],
-            }))
+            const upsert = (list: GroupChat[]) =>
+              list.some((c) => c.id === chatId) ? list.map((c) => (c.id === chatId ? fresh : c)) : [fresh, ...list]
+            const isMember = fresh.memberIds.includes(get().authUserId ?? '')
+            set((s) => (isMember ? { chats: upsert(s.chats) } : { publicChats: upsert(s.publicChats) }))
           } catch (err) {
             report('subscribeToChatRealtime:refetch', err)
           }
@@ -541,6 +695,10 @@ export const useStore = create<BlueprintState>()(
     }),
     {
       name: 'blueprint-mvp-store',
+      // v2: location/community/privacy fields (0007). Older local-demo
+      // snapshots don't have them, so they're dropped for fresh seed data.
+      version: 2,
+      migrate: () => ({}) as BlueprintState,
       // When a real backend is configured, auth + hydration are the source
       // of truth on every load — don't let a stale localStorage snapshot
       // from a previous session (or the local demo data) shadow it.

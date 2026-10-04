@@ -6,7 +6,7 @@ This repo is a clickable, fully interactive MVP built for an accelerator applica
 
 ## Core flows
 
-- **Onboarding** — join, connect-your-closet pitch, profile setup (public/private)
+- **Onboarding** — join with any email, connect-your-closet pitch, profile setup (photo or initials monogram, residence hall or off-campus address, optional phone, public/private), optional school-email verification, Edit Profile for bio and everything else
 - **Digital closet** — categorized wardrobe grid, item detail with wear logging and cost-per-wear, "add item" via mocked Shop/Gmail import or manual camera entry
 - **Closet impact** — CO₂ avoided, water saved, textile waste avoided, wears-logged chart, hardest-working pieces, "sitting idle" lending suggestions
 - **Social fit checks** — start a fit check from your closet, group chat live voting, confirmed look
@@ -46,3 +46,20 @@ Setup:
 4. Restart `npm run dev`. Splash → Join now creates a real Supabase account; "Closets Near Me" shows real items from any other accounts that have signed up and marked something lendable, since the friend graph doesn't exist yet — everyone's public lendable closet is visible to everyone, by design, until Phase 2.
 
 Because sign-up requires only email confirmation settings you control in the Supabase dashboard, turn off "Confirm email" under Authentication → Providers while testing, or you'll need to click a confirmation email before a new account can log in.
+
+### Communities, location and privacy (migration 0007)
+
+Run [`0007_communities_location_privacy.sql`](supabase/migrations/0007_communities_location_privacy.sql) after 0001–0006. It adds:
+
+- **School communities** — sign up with any email; verify a school email separately (Profile → Join your school community) to join that school's community. Columbia + Barnard (`columbia.edu`, `barnard.edu`, and their subdomains) only for now; add a school with one row each in `communities` and `community_domains`. Verified members see classmates first in Find Friends.
+- **Location** — a residence hall from the `buildings` table (with coordinates) or an off-campus address. Friends see your building (or "Off campus") and a walking time; the exact address and all coordinates are owner-only, and distances come from the `friend_distances()` RPC, rounded to 100 m.
+- **Privacy** — anyone signed in can see name/handle/photo/bio, so private accounts are still findable. Closets, location and borrowing are friends-only for everyone; individual items can be "Only me". Fit checks are friends-only by default; a public profile can post one to everyone (anyone can vote, only friends can comment), and it reverts to friends-only if the profile goes private.
+
+School verification codes are emailed by an edge function, so it needs deploying once:
+
+```bash
+supabase functions deploy send-school-verification
+supabase secrets set RESEND_API_KEY=re_... EMAIL_FROM="Blueprint <verify@yourdomain.com>"
+```
+
+(Requires a [Resend](https://resend.com) account with your domain verified. Without a backend, the demo shows the code on screen instead.) If "Confirm email" is on, also add `<your site>/onboarding` under Authentication → URL Configuration → Redirect URLs.

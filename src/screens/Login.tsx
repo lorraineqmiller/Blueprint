@@ -43,12 +43,12 @@ export default function Login() {
             <p className="mt-1 text-sm text-neutral-600">Log in to your Blueprint account.</p>
           </div>
           <div>
-            <Eyebrow className="mb-1">School email</Eyebrow>
+            <Eyebrow className="mb-1">Email</Eyebrow>
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
-              placeholder="anna@columbia.edu"
+              placeholder="anna@gmail.com"
               className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
             />
           </div>

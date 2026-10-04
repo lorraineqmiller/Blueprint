@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Screen } from '../components/Shell'
-import { Badge, Eyebrow, Photo } from '../components/ui'
+import { Avatar, Badge, Eyebrow, Photo } from '../components/ui'
 import { useStore } from '../store'
 import { useMyItems } from '../lib/selectors'
 import { closetImpact } from '../lib/impact'
@@ -16,7 +16,9 @@ export default function Home() {
   const impact = closetImpact(items)
 
   const votingChat = chats.find((c) => c.status === 'voting')
-  const lendableFromFriends = allItems.filter((i) => i.ownerId !== user.id && i.lendable).slice(0, 4)
+  const lendableFromFriends = allItems
+    .filter((i) => i.lendable && !i.isPrivate && people.some((p) => p.id === i.ownerId))
+    .slice(0, 4)
 
   const firstName = user.name.split(' ')[0]
 
@@ -29,7 +31,7 @@ export default function Home() {
             <h1 className="font-heading text-3xl font-semibold uppercase">Hey {firstName}</h1>
           </div>
           <button onClick={() => nav('/profile')}>
-            <Photo src={user.avatarUrl} alt={user.name} className="h-10 w-10 rounded-md" />
+            <Avatar src={user.avatarUrl} name={user.name} className="h-10 w-10" />
           </button>
         </div>
 
@@ -43,7 +45,7 @@ export default function Home() {
           </div>
           <div className="font-heading mt-2 text-4xl font-semibold">{impact.co2Kg} kg</div>
           <p className="mt-1 text-sm text-white/70">
-            Avoided by re-wearing and borrowing. You're top 8% at {user.school}.
+            Avoided by re-wearing and borrowing.{user.school ? ` You're top 8% at ${user.school}.` : ''}
           </p>
         </button>
 

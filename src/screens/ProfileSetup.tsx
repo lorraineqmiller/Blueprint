@@ -1,20 +1,29 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
-import { Eyebrow, Photo, PrimaryButton } from '../components/ui'
+import { Eyebrow, PrimaryButton } from '../components/ui'
+import { AvatarUpload } from '../components/AvatarUpload'
+import { isLocationComplete, LocationPicker, type LocationValue } from '../components/LocationPicker'
+import { isPhoneValid, PhoneField, SchoolCommunityRow, VisibilityToggle } from '../components/ProfileFields'
 import { useStore } from '../store'
 
+// Kept short on purpose: photo, where you live, who sees what. Bio and the
+// rest can wait for Edit Profile. Each field saves as soon as it's valid,
+// so a detour to verify a school email doesn't lose anything.
 export default function ProfileSetup() {
   const nav = useNavigate()
   const user = useStore((s) => s.user)
-  const setProfile = useStore((s) => s.setProfile)
-  const setPublic = useStore((s) => s.setPublic)
+  const setLocation = useStore((s) => s.setLocation)
+  const setPhone = useStore((s) => s.setPhone)
   const completeOnboarding = useStore((s) => s.completeOnboarding)
-  const uploadAvatar = useStore((s) => s.uploadAvatar)
-  const [classYear, setClassYear] = useState(user.classYear)
-  const [building, setBuilding] = useState(user.building)
-  const [floor, setFloor] = useState(user.floor)
-  const avatarInput = useRef<HTMLInputElement>(null)
+  const [location, setLocationDraft] = useState<LocationValue>({
+    buildingId: user.buildingId,
+    offCampus: user.offCampus,
+    offCampusAddress: user.offCampusAddress,
+  })
+  const [phone, setPhoneDraft] = useState(user.phone)
+
+  const canFinish = isLocationComplete(location) && isPhoneValid(phone)
 
   return (
     <Screen withNav={false} scroll={false}>
@@ -22,91 +31,49 @@ export default function ProfileSetup() {
       <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto px-6 py-6">
         <div className="space-y-6">
           <div className="flex items-center gap-4">
-            <button onClick={() => avatarInput.current?.click()} className="relative shrink-0">
-              <Photo src={user.avatarUrl} alt={user.name} rounded className="h-16 w-16" />
-              <span className="eyebrow absolute -bottom-1 -right-1 rounded-full bg-accent-700 px-1.5 py-0.5 text-[8px] text-white">
-                Edit
-              </span>
-            </button>
-            <input
-              ref={avatarInput}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) uploadAvatar(file)
-                e.target.value = ''
+            <AvatarUpload />
+            <div className="min-w-0">
+              <div className="font-heading truncate text-lg font-semibold">{user.name}</div>
+              <div className="truncate text-sm text-neutral-600">{user.handle}</div>
+              <p className="text-xs text-neutral-500">Tap to add a photo</p>
+            </div>
+          </div>
+
+          <div>
+            <Eyebrow className="mb-1">Where you live</Eyebrow>
+            <LocationPicker
+              value={location}
+              onChange={(v) => {
+                setLocationDraft(v)
+                if (isLocationComplete(v)) setLocation({ buildingId: v.buildingId, offCampus: v.offCampus }, v.offCampusAddress)
               }}
             />
-            <div>
-              <div className="font-heading text-lg font-semibold">{user.name}</div>
-              <div className="text-sm text-neutral-600">{user.handle}</div>
-            </div>
-          </div>
-          <div>
-            <Eyebrow className="mb-1">Class year</Eyebrow>
-            <input
-              value={classYear}
-              onChange={(e) => setClassYear(e.target.value)}
-              className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
-            />
-          </div>
-          <div>
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Eyebrow className="mb-1">Building</Eyebrow>
-                <input
-                  value={building}
-                  onChange={(e) => setBuilding(e.target.value)}
-                  placeholder="Sulzberger Hall"
-                  className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
-                />
-              </div>
-              <div className="w-24">
-                <Eyebrow className="mb-1">Floor</Eyebrow>
-                <input
-                  value={floor}
-                  onChange={(e) => setFloor(e.target.value)}
-                  placeholder="7"
-                  className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
-                />
-              </div>
-            </div>
             <p className="mt-2 text-xs text-neutral-600">
-              Used to show friends how close your closet is — never anything more precise than this.
+              Friends see your building (or just "off campus") and how many minutes away you are — nothing more precise.
             </p>
           </div>
+
+          <PhoneField
+            value={phone}
+            onChange={setPhoneDraft}
+            onBlur={() => isPhoneValid(phone) && phone !== user.phone && setPhone(phone)}
+          />
+
+          <div>
+            <Eyebrow className="mb-2">School community · optional</Eyebrow>
+            <SchoolCommunityRow />
+          </div>
+
           <div>
             <Eyebrow className="mb-2">Profile visibility</Eyebrow>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setPublic(true)}
-                className={`eyebrow rounded-md border py-4 text-xs tracking-wide ${
-                  user.isPublic ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'
-                }`}
-              >
-                Public
-              </button>
-              <button
-                onClick={() => setPublic(false)}
-                className={`eyebrow rounded-md border py-4 text-xs tracking-wide ${
-                  !user.isPublic ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'
-                }`}
-              >
-                Private
-              </button>
-            </div>
-            <p className="mt-2 text-xs text-neutral-600">
-              {user.isPublic
-                ? 'Friends can browse your closet and send borrow requests.'
-                : 'Only you can see your closet. You can change this anytime.'}
-            </p>
+            <VisibilityToggle />
           </div>
         </div>
         <PrimaryButton
+          className="mt-6"
+          disabled={!canFinish}
           onClick={() => {
-            setProfile({ classYear, building, floor })
+            if (phone !== user.phone) setPhone(phone)
             completeOnboarding()
             nav('/home')
           }}

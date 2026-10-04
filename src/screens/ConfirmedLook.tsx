@@ -11,6 +11,9 @@ export default function ConfirmedLook() {
   const items = useStore((s) => s.items)
   const people = useStore((s) => s.people)
   const user = useStore((s) => s.user)
+  const distances = useStore((s) => s.distances)
+  const buildings = useStore((s) => s.buildings)
+  const near = (p: (typeof people)[number]) => proximityLabel(user, p, distances[p.id], buildings)
 
   if (!chat) return null
   const winner = chat.options.find((o) => o.id === chat.decidedOptionId) ?? chat.options[0]
@@ -52,7 +55,7 @@ export default function ConfirmedLook() {
                 <div className="px-2 py-2">
                   <div className="truncate text-xs font-semibold uppercase">{item.name}</div>
                   <div className="truncate text-[10px] text-neutral-600">
-                    {owned || !owner ? 'Your closet' : `${owner.name} · ${proximityLabel(user, owner)}`}
+                    {owned || !owner ? 'Your closet' : `${owner.name} · ${near(owner)}`}
                   </div>
                 </div>
               </div>
@@ -67,12 +70,14 @@ export default function ConfirmedLook() {
               The look needs the {toBorrow[0].name.toLowerCase()}.{' '}
               {(() => {
                 const missingOwner = people.find((p) => p.id === toBorrow[0].ownerId)
-                return missingOwner ? `${missingOwner.name} has them, ${proximityLabel(user, missingOwner)}.` : null
+                return missingOwner ? `${missingOwner.name} has them, ${near(missingOwner)}.` : null
               })()}
             </p>
-            <PrimaryButton className="mt-3" onClick={() => nav(`/borrow/${toBorrow[0].id}`)}>
-              Request to borrow
-            </PrimaryButton>
+            {toBorrow[0].lendable && (
+              <PrimaryButton className="mt-3" onClick={() => nav(`/borrow/${toBorrow[0].id}`)}>
+                Request to borrow
+              </PrimaryButton>
+            )}
           </div>
         )}
       </div>

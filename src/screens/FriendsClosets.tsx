@@ -1,26 +1,33 @@
 import { useNavigate } from 'react-router-dom'
 import { Screen } from '../components/Shell'
-import { Card, Photo } from '../components/ui'
+import { Avatar, Card, Photo } from '../components/ui'
 import { useStore } from '../store'
 import { isBackendEnabled } from '../lib/supabaseClient'
-import { isSameBuilding, isSameFloor, proximityLabel } from '../lib/proximity'
+import { isSameBuilding, NEARBY_METERS, proximityLabel, walkingLabel } from '../lib/proximity'
+import type { Person } from '../types'
 
 export default function FriendsClosets() {
   const nav = useNavigate()
   const items = useStore((s) => s.items)
   const people = useStore((s) => s.people)
   const user = useStore((s) => s.user)
+  const distances = useStore((s) => s.distances)
+  const buildings = useStore((s) => s.buildings)
 
+  // Same building counts as zero even if the rounded distance says 100 m;
+  // unknown distance sorts last.
+  const distanceTo = (p: Person | undefined) =>
+    !p ? Infinity : isSameBuilding(user, p) ? 0 : (distances[p.id] ?? Infinity)
+
+  // Friends' lendable pieces only — items from a stranger's public fit
+  // check can be in the store too, but aren't borrowable.
   const lendable = items
-    .filter((i) => i.ownerId !== user.id && i.lendable)
+    .filter((i) => i.ownerId !== user.id && i.lendable && !i.isPrivate)
     .map((item) => ({ item, owner: people.find((p) => p.id === item.ownerId) }))
-    .sort((a, b) => {
-      const rank = (p: typeof a.owner) => (!p ? 2 : isSameFloor(user, p) ? 0 : isSameBuilding(user, p) ? 1 : 2)
-      return rank(a.owner) - rank(b.owner)
-    })
+    .filter(({ owner }) => owner)
+    .sort((a, b) => distanceTo(a.owner) - distanceTo(b.owner))
 
-  const onYourFloor = people.filter((p) => isSameFloor(user, p))
-  const inYourBuilding = people.filter((p) => isSameBuilding(user, p) && !isSameFloor(user, p))
+  const nearby = people.filter((p) => distanceTo(p) <= NEARBY_METERS).sort((a, b) => distanceTo(a) - distanceTo(b))
 
   return (
     <Screen>
@@ -34,30 +41,37 @@ export default function FriendsClosets() {
           )}
         </div>
         <p className="text-sm text-neutral-600">
-          {user.school} · {people.length} friends · {lendable.length} lendable pieces
+          {user.school ? `${user.school} · ` : ''}
+          {people.length} friends · {lendable.length} lendable pieces
         </p>
 
         <div className="mt-4 rounded-md border border-accent-300 bg-accent-100 p-4 text-sm">
           <span className="font-heading text-2xl font-semibold text-accent-700">{lendable.length}</span>{' '}
-          pieces you could borrow within a two-minute walk. Proximity is the whole unlock.
+          pieces you could borrow from friends, closest first. Proximity is the whole unlock.
         </div>
 
-        {(onYourFloor.length > 0 || inYourBuilding.length > 0) && (
+        {nearby.length > 0 && (
           <div className="mt-4">
             <h2 className="font-heading text-lg font-semibold uppercase">Friends Nearby</h2>
             <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-              {onYourFloor.map((p) => (
-                <div key={p.id} className="shrink-0 rounded-md border border-accent-300 bg-accent-100 px-3 py-2 text-center">
-                  <div className="text-xs font-semibold">{p.name}</div>
-                  <div className="eyebrow text-[10px] text-accent-700">Same floor</div>
-                </div>
-              ))}
-              {inYourBuilding.map((p) => (
-                <div key={p.id} className="shrink-0 rounded-md border border-neutral-300 bg-white px-3 py-2 text-center">
-                  <div className="text-xs font-semibold">{p.name}</div>
-                  <div className="eyebrow text-[10px] text-neutral-500">Same building</div>
-                </div>
-              ))}
+              {nearby.map((p) => {
+                const same = isSameBuilding(user, p)
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => nav(`/friends/${p.id}`)}
+                    className={`flex shrink-0 flex-col items-center rounded-md border px-3 py-2 text-center ${
+                      same ? 'border-accent-300 bg-accent-100' : 'border-neutral-300 bg-white'
+                    }`}
+                  >
+                    <Avatar src={p.avatarUrl} name={p.name} className="h-8 w-8" />
+                    <div className="mt-1 text-xs font-semibold">{p.name}</div>
+                    <div className={`eyebrow text-[10px] ${same ? 'text-accent-700' : 'text-neutral-500'}`}>
+                      {same ? 'Same building' : walkingLabel(distanceTo(p))}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
@@ -73,7 +87,7 @@ export default function FriendsClosets() {
                     {item.brand} · size {item.size}
                   </div>
                   <div className="truncate text-xs text-accent-600">
-                    {owner?.name} · {owner ? proximityLabel(user, owner) : 'Unknown'}
+                    {owner?.name} · {owner ? proximityLabel(user, owner, distances[owner.id], buildings) : 'Unknown'}
                   </div>
                 </div>
                 <span className="text-neutral-400">›</span>

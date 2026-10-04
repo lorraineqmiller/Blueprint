@@ -12,6 +12,7 @@ export default function ItemDetail() {
   const item = useItemById(itemId)
   const logWear = useStore((s) => s.logWear)
   const toggleLendable = useStore((s) => s.toggleLendable)
+  const setItemPrivate = useStore((s) => s.setItemPrivate)
   const uploadItemImage = useStore((s) => s.uploadItemImage)
   const fileInput = useRef<HTMLInputElement>(null)
 
@@ -59,11 +60,35 @@ export default function ItemDetail() {
           <p className="mt-1 text-sm text-ink">Every re-wear beats a new purchase. Keep this one in rotation.</p>
         </div>
 
+        <div className="mt-5">
+          <p className="eyebrow mb-2 text-xs text-neutral-600">Who can see this piece</p>
+          <div className="grid grid-cols-2 gap-3">
+            {[false, true].map((priv) => (
+              <button
+                key={String(priv)}
+                onClick={() => setItemPrivate(item.id, priv)}
+                className={`eyebrow rounded-md border py-3 text-xs tracking-wide ${
+                  item.isPrivate === priv ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'
+                }`}
+              >
+                {priv ? 'Only me' : 'Friends'}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-neutral-600">
+            {item.isPrivate
+              ? "Hidden from everyone but you, so it can't be lent out."
+              : 'Friends can see it when they browse your closet.'}
+          </p>
+        </div>
+
         <div className="mt-5 space-y-3">
           <PrimaryButton onClick={() => logWear(item.id)}>I wore this today</PrimaryButton>
-          <SecondaryButton onClick={() => toggleLendable(item.id)}>
-            {item.lendable ? 'Make private (not lendable)' : 'Open this up to lending'}
-          </SecondaryButton>
+          {!item.isPrivate && (
+            <SecondaryButton onClick={() => toggleLendable(item.id)}>
+              {item.lendable ? 'Stop lending this' : 'Open this up to lending'}
+            </SecondaryButton>
+          )}
         </div>
       </div>
     </Screen>

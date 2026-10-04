@@ -131,3 +131,29 @@ export function Photo({
     />
   )
 }
+
+export function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  const first = parts[0][0]
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
+  return (first + last).toUpperCase()
+}
+
+// Profile picture, or a monogram of their initials when there isn't one
+// (or it fails to load). Size comes from className (h-10 w-10 etc.); the
+// monogram text scales with it via container-relative units.
+export function Avatar({ src, name, className = '' }: { src?: string | null; name: string; className?: string }) {
+  const [failed, setFailed] = useState(false)
+  if (src && !failed) {
+    return <img src={src} alt={name} onError={() => setFailed(true)} className={`shrink-0 rounded-full object-cover ${className}`} />
+  }
+  return (
+    <div
+      aria-label={name}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-navy font-heading font-semibold text-white [container-type:size] ${className}`}
+    >
+      <span className="text-[length:40cqh] leading-none tracking-wide">{initials(name)}</span>
+    </div>
+  )
+}

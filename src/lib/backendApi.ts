@@ -4,7 +4,19 @@
 // keeps using the same shapes from src/types.ts regardless of where the data
 // comes from.
 import { supabase } from './supabaseClient'
-import type { BorrowRequest, Category, ClothingItem, CurrentUser, GroupChat, Person, WearLogEntry } from '../types'
+import type { Building } from '../data/buildings'
+import type {
+  BorrowRequest,
+  Category,
+  ChatAudience,
+  ClothingItem,
+  CurrentUser,
+  GroupChat,
+  Location,
+  OffCampusAddress,
+  Person,
+  WearLogEntry,
+} from '../types'
 
 function db() {
   if (!supabase) throw new Error('Supabase is not configured')
@@ -13,24 +25,26 @@ function db() {
 
 // ── auth ────────────────────────────────────────────────────────────────
 
-export async function signUp(input: { email: string; password: string; name: string; handle: string; school: string }) {
+// Any email works — school membership is a separate verification step
+// (sendSchoolCode / verifySchoolCode below). Returns whether the account
+// still needs its email confirmed before it can sign in (true when
+// "Confirm email" is on in Supabase Auth settings).
+export async function signUp(input: { email: string; password: string; name: string; handle: string }) {
   const { data, error } = await db().auth.signUp({
     email: input.email,
     password: input.password,
-    options: { data: { name: input.name, handle: input.handle, school: input.school } },
+    options: { data: { name: input.name, handle: input.handle }, emailRedirectTo: `${window.location.origin}/onboarding` },
   })
   if (error) throw error
-  return data
+  return { needsEmailConfirmation: !data.session }
 }
 
+// Security-definer RPC (0007) so it sees every profile, private ones
+// included, even before there's a session.
 export async function isHandleAvailable(handle: string): Promise<boolean> {
-  // Runs pre-signup with no session yet, so RLS only shows public profiles
-  // (is_public defaults true for everyone) — a false "available" for a
-  // private profile's handle is caught for real at insert time by the
-  // signup trigger's own collision fallback (0003_fix_handle_collision.sql).
-  const { data, error } = await db().from('profiles').select('id').eq('handle', handle).maybeSingle()
+  const { data, error } = await db().rpc('is_handle_available', { p_handle: handle })
   if (error) throw error
-  return data === null
+  return data as boolean
 }
 
 export async function signIn(input: { email: string; password: string }) {
@@ -60,10 +74,9 @@ type ProfileRow = {
   id: string
   name: string
   handle: string
+  bio: string
   school: string
-  class_year: string
-  building: string
-  floor: string
+  community_id: string | null
   avatar_url: string | null
   is_public: boolean
   is_premium: boolean
@@ -72,15 +85,40 @@ type ProfileRow = {
   has_connected_gmail: boolean
 }
 
-function profileToUser(row: ProfileRow): CurrentUser {
+type LocationRow = { user_id: string; building_id: string | null; off_campus: boolean }
+type PrivateRow = {
+  phone: string
+  off_campus_address: string
+  off_campus_lat: number | null
+  off_campus_lng: number | null
+}
+type SchoolEmailRow = { email: string | null; verified_at: string | null; pending_email: string | null }
+
+function locationFromRow(row: LocationRow | undefined | null): Location {
+  return { buildingId: row?.building_id ?? null, offCampus: row?.off_campus ?? false }
+}
+
+function profileToUser(
+  row: ProfileRow,
+  loc: LocationRow | null,
+  priv: PrivateRow | null,
+  school: SchoolEmailRow | null,
+): CurrentUser {
   return {
     id: row.id,
     name: row.name,
     handle: row.handle,
+    bio: row.bio,
     school: row.school,
-    classYear: row.class_year,
-    building: row.building,
-    floor: row.floor,
+    communityId: row.community_id,
+    ...locationFromRow(loc),
+    phone: priv?.phone ?? '',
+    offCampusAddress:
+      priv && priv.off_campus_lat !== null && priv.off_campus_lng !== null
+        ? { address: priv.off_campus_address, lat: priv.off_campus_lat, lng: priv.off_campus_lng }
+        : null,
+    schoolEmail: school?.verified_at ? school.email : null,
+    pendingSchoolEmail: school?.pending_email ?? null,
     avatarUrl: row.avatar_url,
     isPublic: row.is_public,
     isPremium: row.is_premium,
@@ -90,15 +128,17 @@ function profileToUser(row: ProfileRow): CurrentUser {
   }
 }
 
-function profileToPerson(row: ProfileRow): Person {
+// Location is only readable for friends (RLS on profile_locations), so for
+// anyone else it simply comes back unset.
+function profileToPerson(row: ProfileRow, loc?: LocationRow): Person {
   return {
     id: row.id,
     name: row.name,
     handle: row.handle,
+    bio: row.bio,
     school: row.school,
-    classYear: row.class_year,
-    building: row.building,
-    floor: row.floor,
+    communityId: row.community_id,
+    ...locationFromRow(loc),
     avatarUrl: row.avatar_url,
     isPublic: row.is_public,
   }
@@ -121,6 +161,7 @@ type ItemRow = {
   always_returned: boolean
   created_at: string
   image_url: string | null
+  is_private: boolean
 }
 
 function itemFromRow(row: ItemRow): ClothingItem {
@@ -141,6 +182,7 @@ function itemFromRow(row: ItemRow): ClothingItem {
     timesLent: row.times_lent,
     alwaysReturned: row.always_returned,
     imageUrl: row.image_url,
+    isPrivate: row.is_private,
   }
 }
 
@@ -172,9 +214,19 @@ function borrowRequestFromRow(row: BorrowRequestRow): BorrowRequest {
 // ── profile ─────────────────────────────────────────────────────────────
 
 export async function fetchProfile(userId: string): Promise<CurrentUser> {
-  const { data, error } = await db().from('profiles').select('*').eq('id', userId).single()
-  if (error) throw error
-  return profileToUser(data as ProfileRow)
+  const [profile, loc, priv, school] = await Promise.all([
+    db().from('profiles').select('*').eq('id', userId).single(),
+    db().from('profile_locations').select('*').eq('user_id', userId).maybeSingle(),
+    db().from('profile_private').select('*').eq('user_id', userId).maybeSingle(),
+    db().rpc('my_school_email').maybeSingle(),
+  ])
+  for (const r of [profile, loc, priv, school]) if (r.error) throw r.error
+  return profileToUser(
+    profile.data as ProfileRow,
+    loc.data as LocationRow | null,
+    priv.data as PrivateRow | null,
+    school.data as SchoolEmailRow | null,
+  )
 }
 
 export async function updateProfile(userId: string, patch: Record<string, unknown>) {
@@ -184,9 +236,77 @@ export async function updateProfile(userId: string, patch: Record<string, unknow
 
 export async function fetchProfilesByIds(ids: string[]): Promise<Person[]> {
   if (ids.length === 0) return []
-  const { data, error } = await db().from('profiles').select('*').in('id', ids)
+  const [profiles, locs] = await Promise.all([
+    db().from('profiles').select('*').in('id', ids),
+    db().from('profile_locations').select('*').in('user_id', ids),
+  ])
+  if (profiles.error) throw profiles.error
+  if (locs.error) throw locs.error
+  const locById = new Map((locs.data as LocationRow[]).map((l) => [l.user_id, l]))
+  return (profiles.data as ProfileRow[]).map((p) => profileToPerson(p, locById.get(p.id)))
+}
+
+// ── location ────────────────────────────────────────────────────────────
+
+export async function fetchBuildings(): Promise<Building[]> {
+  const { data, error } = await db().from('buildings').select('*').order('name')
   if (error) throw error
-  return (data as ProfileRow[]).map(profileToPerson)
+  return (data as { id: string; community_id: string; school: string; name: string; lat: number; lng: number }[]).map((b) => ({
+    id: b.id,
+    communityId: b.community_id,
+    school: b.school,
+    name: b.name,
+    lat: b.lat,
+    lng: b.lng,
+  }))
+}
+
+// The building (or just "off campus") goes where friends can read it; the
+// exact address and its coordinates go in the owner-only table.
+export async function saveLocation(userId: string, loc: Location, offCampusAddress: OffCampusAddress | null) {
+  const { error: e1 } = await db()
+    .from('profile_locations')
+    .upsert({ user_id: userId, building_id: loc.buildingId, off_campus: loc.offCampus, updated_at: new Date().toISOString() })
+  if (e1) throw e1
+  const { error: e2 } = await db()
+    .from('profile_private')
+    .upsert({
+      user_id: userId,
+      off_campus_address: offCampusAddress?.address ?? '',
+      off_campus_lat: offCampusAddress?.lat ?? null,
+      off_campus_lng: offCampusAddress?.lng ?? null,
+    })
+  if (e2) throw e2
+}
+
+export async function savePhone(userId: string, phone: string) {
+  const { error } = await db().from('profile_private').upsert({ user_id: userId, phone })
+  if (error) throw error
+}
+
+export async function fetchFriendDistances(): Promise<Record<string, number>> {
+  const { data, error } = await db().rpc('friend_distances')
+  if (error) throw error
+  return Object.fromEntries((data as { friend_id: string; meters: number }[]).map((r) => [r.friend_id, r.meters]))
+}
+
+// ── school community ────────────────────────────────────────────────────
+
+export async function sendSchoolCode(email: string) {
+  const { error } = await db().functions.invoke('send-school-verification', { body: { email } })
+  if (error) {
+    // FunctionsHttpError carries the function's own JSON error message.
+    const body = await (error as { context?: Response }).context?.json?.().catch(() => null)
+    throw new Error(body?.error ?? "Couldn't send the code. Try again.")
+  }
+}
+
+export type VerifyResult = 'verified' | 'incorrect' | 'expired' | 'too_many_attempts' | 'no_pending' | 'email_taken' | 'unsupported_domain'
+
+export async function verifySchoolCode(code: string): Promise<VerifyResult> {
+  const { data, error } = await db().rpc('verify_school_email', { p_code: code })
+  if (error) throw error
+  return data as VerifyResult
 }
 
 // ── items ───────────────────────────────────────────────────────────────
@@ -201,11 +321,18 @@ export async function fetchMyItems(userId: string): Promise<ClothingItem[]> {
   return (data as ItemRow[]).map(itemFromRow)
 }
 
-// Public + lendable items owned by someone other than the current user.
-// RLS (see 0002_phase2.sql) transparently restricts the rows that actually
-// come back to accepted friends only — no friendship filter needed here.
-export async function fetchDiscoverableItems(excludeUserId: string): Promise<ClothingItem[]> {
-  const { data, error } = await db().from('items').select('*').eq('lendable', true).neq('owner_id', excludeUserId)
+// Everyone else's items this user can see. RLS (0007) does the real
+// filtering: friends' non-private items, plus anything that's part of a fit
+// check they can see — no friendship filter needed here.
+export async function fetchVisibleItems(excludeUserId: string): Promise<ClothingItem[]> {
+  const { data, error } = await db().from('items').select('*').neq('owner_id', excludeUserId)
+  if (error) throw error
+  return (data as ItemRow[]).map(itemFromRow)
+}
+
+export async function fetchItemsByIds(ids: string[]): Promise<ClothingItem[]> {
+  if (ids.length === 0) return []
+  const { data, error } = await db().from('items').select('*').in('id', ids)
   if (error) throw error
   return (data as ItemRow[]).map(itemFromRow)
 }
@@ -238,6 +365,13 @@ export async function updateItemAfterWear(itemId: string, wearCount: number, las
 
 export async function updateItemLendable(itemId: string, lendable: boolean) {
   const { error } = await db().from('items').update({ lendable }).eq('id', itemId)
+  if (error) throw error
+}
+
+// Making an item private also takes it off lending (a DB check enforces it).
+export async function updateItemPrivacy(itemId: string, isPrivate: boolean) {
+  const patch = isPrivate ? { is_private: true, lendable: false } : { is_private: false }
+  const { error } = await db().from('items').update(patch).eq('id', itemId)
   if (error) throw error
 }
 
@@ -364,8 +498,9 @@ export async function fetchOutgoingRequestIds(userId: string): Promise<string[]>
   return (data as { addressee_id: string }[]).map((r) => r.addressee_id)
 }
 
-// Public profiles you're not already connected to (in either direction, any
-// status) — the pool for a "Find Friends" screen.
+// Everyone you're not already connected to — private profiles included,
+// since you have to be able to find someone to send them a request. Their
+// closet and location stay hidden until they accept.
 export async function fetchDiscoverablePeople(userId: string): Promise<Person[]> {
   const { data: existing, error: e1 } = await db()
     .from('friendships')
@@ -384,9 +519,9 @@ export async function fetchDiscoverablePeople(userId: string): Promise<Person[]>
       excludeIds.add(otherId)
     }
   }
-  const { data, error } = await db().from('profiles').select('*').eq('is_public', true).neq('id', userId)
+  const { data, error } = await db().from('profiles').select('*').neq('id', userId)
   if (error) throw error
-  return (data as ProfileRow[]).filter((p) => !excludeIds.has(p.id)).map(profileToPerson)
+  return (data as ProfileRow[]).filter((p) => !excludeIds.has(p.id)).map((p) => profileToPerson(p))
 }
 
 export async function sendFriendRequest(requesterId: string, addresseeId: string) {
@@ -419,6 +554,7 @@ type ChatRow = {
   decided_option_id: string | null
   voting_closes_label: string
   created_by: string
+  audience: ChatAudience
   created_at: string
 }
 type ChatMemberRow = { chat_id: string; user_id: string }
@@ -432,6 +568,7 @@ function assembleChats(
   options: ChatOptionRow[],
   votes: VoteRow[],
   comments: ChatCommentRow[],
+  participants: Person[],
 ): GroupChat[] {
   return chats.map((c) => {
     const chatOptions = options.filter((o) => o.chat_id === c.id)
@@ -445,6 +582,9 @@ function assembleChats(
       location: c.location,
       eventTime: c.event_time,
       memberIds: members.filter((m) => m.chat_id === c.id).map((m) => m.user_id),
+      createdBy: c.created_by,
+      audience: c.audience,
+      participants: participants.map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl })),
       status: c.status,
       options: chatOptions.map((o) => ({
         id: o.id,
@@ -470,12 +610,17 @@ async function fetchChatBundle(filterChatIds: string[]) {
     db().from('chat_comments').select('*').in('chat_id', filterChatIds),
   ])
   for (const r of [chatsRes, membersRes, optionsRes, votesRes, commentsRes]) if (r.error) throw r.error
+  const participantIds = new Set<string>()
+  for (const c of chatsRes.data as ChatRow[]) participantIds.add(c.created_by)
+  for (const m of membersRes.data as ChatMemberRow[]) participantIds.add(m.user_id)
+  const participants = await fetchProfilesByIds([...participantIds])
   return assembleChats(
     chatsRes.data as ChatRow[],
     membersRes.data as ChatMemberRow[],
     optionsRes.data as ChatOptionRow[],
     votesRes.data as VoteRow[],
     commentsRes.data as ChatCommentRow[],
+    participants,
   )
 }
 
@@ -485,6 +630,24 @@ export async function fetchMyChats(userId: string): Promise<GroupChat[]> {
   const chatIds = (memberRows as { chat_id: string }[]).map((r) => r.chat_id)
   if (chatIds.length === 0) return []
   return fetchChatBundle(chatIds)
+}
+
+// Public fit checks you're not part of — RLS (can_view_chat) already drops
+// any whose creator has since gone private.
+export async function fetchPublicChats(userId: string, limit = 20): Promise<GroupChat[]> {
+  const { data: mine, error: e1 } = await db().from('chat_members').select('chat_id').eq('user_id', userId)
+  if (e1) throw e1
+  const myIds = new Set((mine as { chat_id: string }[]).map((r) => r.chat_id))
+  const { data, error } = await db()
+    .from('chats')
+    .select('id')
+    .eq('audience', 'public')
+    .order('created_at', { ascending: false })
+    .limit(limit + myIds.size)
+  if (error) throw error
+  const ids = (data as { id: string }[]).map((r) => r.id).filter((id) => !myIds.has(id)).slice(0, limit)
+  if (ids.length === 0) return []
+  return fetchChatBundle(ids)
 }
 
 export async function fetchChatDetail(chatId: string): Promise<GroupChat | null> {
@@ -499,6 +662,7 @@ export async function insertChat(input: {
   location: string
   eventTime: string
   createdBy: string
+  audience: ChatAudience
   memberIds: string[]
   options: { id: string; label: string; itemIds: string[] }[]
 }) {
@@ -509,6 +673,7 @@ export async function insertChat(input: {
     location: input.location,
     event_time: input.eventTime,
     created_by: input.createdBy,
+    audience: input.audience,
   })
   if (e1) throw e1
   const { error: e2 } = await db()

@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Screen } from '../components/Shell'
-import { Photo, PrimaryButton } from '../components/ui'
+import { Avatar, Photo } from '../components/ui'
 import { useStore } from '../store'
 import { useMyItems } from '../lib/selectors'
 import { closetImpact } from '../lib/impact'
+import { locationName } from '../lib/proximity'
+import { communityName } from '../data/communities'
 import { isBackendEnabled } from '../lib/supabaseClient'
 
 export default function Profile() {
@@ -13,16 +14,11 @@ export default function Profile() {
   const items = useMyItems()
   const requests = useStore((s) => s.borrowRequests)
   const people = useStore((s) => s.people)
-  const setPublic = useStore((s) => s.setPublic)
-  const setProfile = useStore((s) => s.setProfile)
+  const buildings = useStore((s) => s.buildings)
   const signOut = useStore((s) => s.signOut)
-  const uploadAvatar = useStore((s) => s.uploadAvatar)
   const impact = closetImpact(items)
-  const avatarInput = useRef<HTMLInputElement>(null)
-
-  const [editingLocation, setEditingLocation] = useState(false)
-  const [buildingDraft, setBuildingDraft] = useState(user.building)
-  const [floorDraft, setFloorDraft] = useState(user.floor)
+  const place = locationName(user, buildings)
+  const community = communityName(user.communityId)
 
   const borrowsCount = requests.filter((r) => r.requesterId === user.id || r.ownerId === user.id).length
   const recentlyAdded = [...items].sort((a, b) => (a.addedAt < b.addedAt ? 1 : -1)).slice(0, 3)
@@ -31,36 +27,37 @@ export default function Profile() {
     <Screen>
       <div className="px-5 py-5">
         <div className="flex items-center gap-4">
-          <button onClick={() => avatarInput.current?.click()} className="relative shrink-0">
-            <Photo src={user.avatarUrl} alt={user.name} rounded className="h-16 w-16" />
-            <span className="eyebrow absolute -bottom-1 -right-1 rounded-full bg-accent-700 px-1.5 py-0.5 text-[8px] text-white">
-              Edit
-            </span>
-          </button>
-          <input
-            ref={avatarInput}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) uploadAvatar(file)
-              e.target.value = ''
-            }}
-          />
-          <div>
-            <div className="font-heading text-lg font-semibold">{user.handle}</div>
-            <div className="text-sm text-neutral-600">
-              {user.school} · {user.classYear}
+          <Avatar src={user.avatarUrl} name={user.name} className="h-16 w-16" />
+          <div className="min-w-0 flex-1">
+            <div className="font-heading truncate text-lg font-semibold">{user.name}</div>
+            <div className="truncate text-sm text-neutral-600">{user.handle}</div>
+            <div className="mt-0.5 flex flex-wrap gap-1">
+              {community && (
+                <span className="eyebrow rounded-sm bg-navy px-1.5 py-0.5 text-[9px] text-white">{user.school}</span>
+              )}
+              <span className="eyebrow rounded-sm bg-neutral-200 px-1.5 py-0.5 text-[9px] text-neutral-700">
+                {user.isPublic ? 'Public' : 'Private'}
+              </span>
+              {place && <span className="eyebrow rounded-sm bg-neutral-200 px-1.5 py-0.5 text-[9px] text-neutral-700">{place}</span>}
             </div>
-            {user.building && (
-              <div className="text-xs text-neutral-500">
-                {user.building}
-                {user.floor ? ` · Floor ${user.floor}` : ''}
-              </div>
-            )}
           </div>
         </div>
+        {user.bio && <p className="mt-3 text-sm text-ink">{user.bio}</p>}
+        <button
+          onClick={() => nav('/profile/edit')}
+          className="eyebrow mt-3 w-full rounded-md border border-neutral-400 bg-white py-2.5 text-center text-xs tracking-wide text-ink"
+        >
+          Edit profile
+        </button>
+        {!community && (
+          <button
+            onClick={() => nav('/verify-school')}
+            className="mt-3 block w-full rounded-md border border-dashed border-accent-300 bg-accent-100 p-3 text-left"
+          >
+            <div className="text-sm font-semibold text-accent-700">Join your school community</div>
+            <p className="text-xs text-ink">Verify your Columbia or Barnard email to find classmates.</p>
+          </button>
+        )}
 
         <div className="mt-4 grid grid-cols-3 gap-3">
           <div className="rounded-md border border-neutral-300 bg-white py-3 text-center">
@@ -114,83 +111,6 @@ export default function Profile() {
               <div className="truncate px-2 py-1 text-[11px] font-semibold uppercase">{item.name}</div>
             </button>
           ))}
-        </div>
-
-        <div className="mt-6 flex items-center justify-between border-t border-neutral-300 pt-4">
-          <div>
-            <div className="text-sm font-semibold">Profile visibility</div>
-            <p className="text-xs text-neutral-600">{user.isPublic ? 'Public — friends can browse your closet' : 'Private — only you can see it'}</p>
-          </div>
-          <button
-            onClick={() => setPublic(!user.isPublic)}
-            className={`eyebrow rounded-md border px-3 py-2 text-[11px] ${
-              user.isPublic ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'
-            }`}
-          >
-            {user.isPublic ? 'Public' : 'Private'}
-          </button>
-        </div>
-
-        <div className="mt-4 border-t border-neutral-300 pt-4">
-          {editingLocation ? (
-            <div>
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <div className="eyebrow mb-1 text-[11px] text-neutral-600">Building</div>
-                  <input
-                    value={buildingDraft}
-                    onChange={(e) => setBuildingDraft(e.target.value)}
-                    placeholder="Sulzberger Hall"
-                    className="w-full rounded-md border border-neutral-400 bg-white px-3 py-2 text-sm outline-none focus:border-accent-600"
-                  />
-                </div>
-                <div className="w-20">
-                  <div className="eyebrow mb-1 text-[11px] text-neutral-600">Floor</div>
-                  <input
-                    value={floorDraft}
-                    onChange={(e) => setFloorDraft(e.target.value)}
-                    placeholder="7"
-                    className="w-full rounded-md border border-neutral-400 bg-white px-3 py-2 text-sm outline-none focus:border-accent-600"
-                  />
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <PrimaryButton
-                  onClick={() => {
-                    setProfile({ building: buildingDraft, floor: floorDraft })
-                    setEditingLocation(false)
-                  }}
-                >
-                  Save
-                </PrimaryButton>
-                <button
-                  onClick={() => setEditingLocation(false)}
-                  className="eyebrow rounded-md border border-neutral-400 text-xs text-ink"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-semibold">Location</div>
-                <p className="text-xs text-neutral-600">
-                  {user.building ? `${user.building}${user.floor ? ` · Floor ${user.floor}` : ''}` : 'Not set'}
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setBuildingDraft(user.building)
-                  setFloorDraft(user.floor)
-                  setEditingLocation(true)
-                }}
-                className="eyebrow rounded-md border border-neutral-400 px-3 py-2 text-[11px] text-ink"
-              >
-                Edit
-              </button>
-            </div>
-          )}
         </div>
 
         {isBackendEnabled && (

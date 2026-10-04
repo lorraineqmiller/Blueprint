@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
-import { Photo, PrimaryButton } from '../components/ui'
+import { Avatar, Photo, PrimaryButton } from '../components/ui'
 import { useStore } from '../store'
 
 export default function LiveVote() {
   const nav = useNavigate()
   const { chatId } = useParams()
-  const chat = useStore((s) => s.chats.find((c) => c.id === chatId))
+  const chat = useStore((s) => s.chats.find((c) => c.id === chatId) ?? s.publicChats.find((c) => c.id === chatId))
   const items = useStore((s) => s.items)
   const people = useStore((s) => s.people)
   const user = useStore((s) => s.user)
@@ -25,13 +25,23 @@ export default function LiveVote() {
 
   if (!chat) return null
   const total = chat.options.reduce((a, o) => a + o.votes, 0) || 1
+  // On a public fit check, non-members (people who aren't the creator's
+  // friends) can vote but not comment or lock the look.
+  const isMember = chat.memberIds.includes(user.id)
+  const creator = chat.participants?.find((p) => p.id === chat.createdBy)
+  const author = (id: string) =>
+    id === user.id
+      ? { name: 'You', avatarUrl: user.avatarUrl }
+      : (people.find((p) => p.id === id) ?? chat.participants?.find((p) => p.id === id) ?? { name: 'Someone', avatarUrl: null })
 
   return (
     <Screen withNav={false}>
       <TopBar title={chat.title} onBack={() => nav('/chats')} />
       <div className="px-5 py-5">
         <p className="text-xs text-neutral-600">
-          {chat.memberIds.length} members · voting closes {chat.votingClosesLabel}
+          {!isMember && creator ? `${creator.name}'s fit check · ` : ''}
+          {chat.audience === 'public' ? 'Public' : `${chat.memberIds.length} members`} · voting{' '}
+          {chat.status === 'voting' ? `closes ${chat.votingClosesLabel}` : 'closed'}
         </p>
 
         <div className="mt-4 rounded-md border border-neutral-300 bg-white p-4">
@@ -74,10 +84,10 @@ export default function LiveVote() {
         <div className="mt-5 space-y-3">
           {chat.comments.map((c) => (
             <div key={c.id} className="flex gap-2">
-              <div className="h-8 w-8 shrink-0 rounded-md bg-neutral-200" />
+              <Avatar src={author(c.authorId).avatarUrl} name={author(c.authorId).name} className="h-8 w-8" />
               <div>
                 <p className="text-xs text-neutral-500">
-                  {c.authorId === user.id ? 'You' : people.find((p) => p.id === c.authorId)?.name} ·{' '}
+                  {author(c.authorId).name} ·{' '}
                   {new Date(c.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                 </p>
                 <p className="text-sm">{c.text}</p>
@@ -86,7 +96,12 @@ export default function LiveVote() {
           ))}
         </div>
 
-        <div className="mt-4 flex gap-2">
+        {!isMember && (
+          <p className="mt-4 text-xs text-neutral-500">
+            {creator ? `Only ${creator.name}'s friends can comment.` : 'Only friends of the poster can comment.'}
+          </p>
+        )}
+        <div className={`mt-4 flex gap-2 ${isMember ? '' : 'hidden'}`}>
           <input
             value={comment}
             onChange={(e) => setComment(e.target.value)}
@@ -105,7 +120,7 @@ export default function LiveVote() {
           </button>
         </div>
 
-        {chat.status === 'voting' && (
+        {chat.status === 'voting' && isMember && (
           <PrimaryButton
             className="mt-5"
             onClick={() => {

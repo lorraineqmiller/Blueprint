@@ -21,6 +21,9 @@ import NewFitCheck from './screens/NewFitCheck'
 import ClosetImpact from './screens/ClosetImpact'
 import Profile from './screens/Profile'
 import BlueprintPlus from './screens/BlueprintPlus'
+import EditProfile from './screens/EditProfile'
+import VerifySchool from './screens/VerifySchool'
+import FriendCloset from './screens/FriendCloset'
 import { useStore } from './store'
 import { isBackendEnabled } from './lib/supabaseClient'
 
@@ -105,6 +108,14 @@ export default function App() {
           }
         />
         <Route
+          path="/friends/:personId"
+          element={
+            <AuthGate>
+              <FriendCloset />
+            </AuthGate>
+          }
+        />
+        <Route
           path="/borrow/:itemId"
           element={
             <AuthGate>
@@ -165,6 +176,22 @@ export default function App() {
           element={
             <AuthGate>
               <Profile />
+            </AuthGate>
+          }
+        />
+        <Route
+          path="/profile/edit"
+          element={
+            <AuthGate>
+              <EditProfile />
+            </AuthGate>
+          }
+        />
+        <Route
+          path="/verify-school"
+          element={
+            <AuthGate>
+              <VerifySchool />
             </AuthGate>
           }
         />

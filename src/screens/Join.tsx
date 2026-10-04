@@ -18,8 +18,8 @@ export default function Join() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [school, setSchool] = useState('Columbia University')
   const [username, setUsername] = useState('')
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false)
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>('idle')
   const [loading, setLoading] = useState(false)
 
@@ -73,13 +73,17 @@ export default function Join() {
 
   async function handleContinue() {
     if (!isBackendEnabled) {
-      setProfile({ name, handle: `@${name.toLowerCase().replace(/\s+/g, '')}`, school })
+      setProfile({ name, handle: `@${name.toLowerCase().replace(/\s+/g, '')}` })
       nav('/onboarding')
       return
     }
     setLoading(true)
     try {
-      await signUp({ email, password, name, handle: `@${username}`, school })
+      const { needsEmailConfirmation } = await signUp({ email, password, name, handle: `@${username}` })
+      if (needsEmailConfirmation) {
+        setAwaitingConfirmation(true)
+        return
+      }
       // onAuthStateChange (wired up in App.tsx) hydrates the store from the
       // new profile row the signup trigger just created, then we move on.
       nav('/onboarding')
@@ -88,6 +92,24 @@ export default function Join() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (awaitingConfirmation) {
+    return (
+      <Screen withNav={false} scroll={false}>
+        <TopBar title="Join" onBack={() => setAwaitingConfirmation(false)} />
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-8 text-center">
+          <h2 className="font-heading text-2xl font-semibold uppercase">Check your inbox</h2>
+          <p className="mt-2 text-sm text-neutral-600">
+            We sent a confirmation link to <span className="font-semibold text-ink">{email}</span>. Tap it to finish
+            setting up your account.
+          </p>
+          <button onClick={() => nav('/login')} className="eyebrow mt-6 text-xs tracking-wide text-accent-600">
+            Already confirmed? Log in
+          </button>
+        </div>
+      </Screen>
+    )
   }
 
   return (
@@ -126,14 +148,18 @@ export default function Join() {
             </div>
           )}
           <div>
-            <Eyebrow className="mb-1">School email</Eyebrow>
+            <Eyebrow className="mb-1">Email</Eyebrow>
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
-              placeholder="anna@columbia.edu"
+              autoComplete="email"
+              placeholder="anna@gmail.com"
               className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
             />
+            <p className="mt-1 text-xs text-neutral-500">
+              Any email works. You can link your school email afterward to join your campus community.
+            </p>
           </div>
           {isBackendEnabled && (
             <div>
@@ -147,14 +173,6 @@ export default function Join() {
               />
             </div>
           )}
-          <div>
-            <Eyebrow className="mb-1">School</Eyebrow>
-            <input
-              value={school}
-              onChange={(e) => setSchool(e.target.value)}
-              className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
-            />
-          </div>
           {authError && <p className="text-sm text-red-600">{authError}</p>}
         </div>
         <PrimaryButton disabled={!canContinue || loading} onClick={handleContinue}>

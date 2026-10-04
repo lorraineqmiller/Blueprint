@@ -74,6 +74,11 @@ export default function Closet() {
                     Most Worn
                   </span>
                 )}
+                {item.isPrivate && (
+                  <span className="eyebrow absolute right-1 top-1 rounded-sm bg-white/90 px-1.5 py-0.5 text-[9px] text-neutral-700">
+                    Only me
+                  </span>
+                )}
                 {item.lendable && item.wearCount <= 30 && (
                   <span className="eyebrow absolute left-1 top-1 rounded-sm bg-accent-600 px-1.5 py-0.5 text-[9px] text-white">
                     Lendable

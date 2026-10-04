@@ -99,7 +99,7 @@ export default function ClosetImpact() {
         <div className="mt-4 mb-2">
           <h2 className="font-heading text-lg font-semibold uppercase">Sitting Idle — Lend These</h2>
           <p className="text-sm text-neutral-600">
-            {idle.length} piece{idle.length === 1 ? '' : 's'} you haven't touched in 60 days. Someone on your floor needs them this week.
+            {idle.length} piece{idle.length === 1 ? '' : 's'} you haven't touched in 60 days. A friend down the block might need them this week.
           </p>
           <div className="mt-2 space-y-2">
             {idle.map((item) => (

@@ -4,11 +4,15 @@ import { Screen, TopBar } from '../components/Shell'
 import { Eyebrow, Photo, PrimaryButton } from '../components/ui'
 import { useMyItems } from '../lib/selectors'
 import { useStore } from '../store'
+import type { ChatAudience } from '../types'
 
 export default function NewFitCheck() {
   const nav = useNavigate()
   const items = useMyItems()
   const startFitCheck = useStore((s) => s.startFitCheck)
+  const isPublicProfile = useStore((s) => s.user.isPublic)
+  // Friends-only unless they opt in — and private profiles can't opt in.
+  const [audience, setAudience] = useState<ChatAudience>('friends')
 
   const [eventName, setEventName] = useState('')
   const [location, setLocation] = useState('')
@@ -53,6 +57,30 @@ export default function NewFitCheck() {
                 placeholder="Fri 10pm"
                 className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
               />
+            </div>
+            <div>
+              <Eyebrow className="mb-1">Who can see and vote</Eyebrow>
+              <div className="grid grid-cols-2 gap-3">
+                {(['friends', 'public'] as const).map((a) => (
+                  <button
+                    key={a}
+                    disabled={a === 'public' && !isPublicProfile}
+                    onClick={() => setAudience(a)}
+                    className={`eyebrow rounded-md border py-3 text-xs tracking-wide disabled:border-neutral-300 disabled:text-neutral-400 ${
+                      audience === a ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'
+                    }`}
+                  >
+                    {a === 'friends' ? 'Friends' : 'Everyone'}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-neutral-600">
+                {!isPublicProfile
+                  ? 'Your profile is private, so fit checks stay with your friends.'
+                  : audience === 'public'
+                    ? 'Anyone on Blueprint can see the outfits and vote. Only friends can comment.'
+                    : 'Only your friends can see this and vote.'}
+              </p>
             </div>
           </div>
           <PrimaryButton disabled={!eventName} onClick={() => setStep('items')}>
@@ -102,7 +130,7 @@ export default function NewFitCheck() {
           <PrimaryButton
             disabled={optionA.length === 0 || optionB.length === 0}
             onClick={() => {
-              const id = startFitCheck({ eventName, location, eventTime, optionAItemIds: optionA, optionBItemIds: optionB })
+              const id = startFitCheck({ eventName, location, eventTime, optionAItemIds: optionA, optionBItemIds: optionB, audience })
               nav(`/chats/${id}`)
             }}
           >
