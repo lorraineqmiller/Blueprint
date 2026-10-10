@@ -92,6 +92,9 @@ interface BlueprintState {
   friendRequestsOutgoingIds: string[]
   discoverablePeople: Person[]
   refreshFriendData: () => void
+  // Re-pulls your friends and every piece you can see. Friends' closets are
+  // otherwise only loaded at sign-in, so pickers call this when they open.
+  refreshFriendItems: () => Promise<void>
   sendFriendRequest: (personId: string) => void
   respondToFriendRequest: (personId: string, decision: 'accepted' | 'declined') => void
   // Live-updates friend requests/friends while the Friends screen is open;
@@ -287,11 +290,21 @@ export const useStore = create<BlueprintState>()(
           .then(async () => {
             if (decision !== 'accepted') return
             // Their location and closet only became readable just now.
-            const [friends, visible] = await Promise.all([backend.fetchFriends(userId), backend.fetchVisibleItems(userId)])
-            set((s) => ({ people: friends, items: [...s.items.filter((i) => i.ownerId === userId), ...visible] }))
+            await get().refreshFriendItems()
             get().refreshDistances()
           })
           .catch((e) => report('respondToFriendRequest', e))
+      },
+      refreshFriendItems: async () => {
+        if (!isBackendEnabled) return
+        const userId = get().authUserId
+        if (!userId) return
+        try {
+          const [friends, visible] = await Promise.all([backend.fetchFriends(userId), backend.fetchVisibleItems(userId)])
+          set((s) => ({ people: friends, items: [...s.items.filter((i) => i.ownerId === userId), ...visible] }))
+        } catch (e) {
+          report('refreshFriendItems', e)
+        }
       },
       refreshDistances: () => {
         if (!isBackendEnabled) {
@@ -328,7 +341,11 @@ export const useStore = create<BlueprintState>()(
         if (!isBackendEnabled) return () => {}
         const userId = get().authUserId
         if (!userId) return () => {}
-        return backend.subscribeToFriendships(userId, () => get().refreshFriendData())
+        // Someone accepting your request also opens up their closet.
+        return backend.subscribeToFriendships(userId, () => {
+          get().refreshFriendData()
+          get().refreshFriendItems()
+        })
       },
 
       completeOnboarding: () => {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
 import { Eyebrow, PrimaryButton } from '../components/ui'
@@ -16,6 +16,12 @@ export default function SuggestLook() {
   const user = useStore((s) => s.user)
   const people = useStore((s) => s.people)
   const sendSuggestion = useStore((s) => s.sendSuggestion)
+  const refreshFriendItems = useStore((s) => s.refreshFriendItems)
+
+  // Friends' pieces are loaded at sign-in; pick up anything added since.
+  useEffect(() => {
+    refreshFriendItems()
+  }, [refreshFriendItems])
 
   const [tab, setTab] = useState<'theirs' | 'mine'>('theirs')
   const [itemIds, setItemIds] = useState<string[]>([])

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
 import { Eyebrow, Photo, PrimaryButton } from '../components/ui'
@@ -32,6 +32,12 @@ export default function NewFitCheck() {
   const groups = useStore((s) => s.friendGroups)
   const saveFriendGroup = useStore((s) => s.saveFriendGroup)
   const startFitCheck = useStore((s) => s.startFitCheck)
+  const refreshFriendItems = useStore((s) => s.refreshFriendItems)
+
+  // Friends' pieces are loaded at sign-in; pick up anything added since.
+  useEffect(() => {
+    refreshFriendItems()
+  }, [refreshFriendItems])
 
   const [step, setStep] = useState<Step>('details')
   const [eventName, setEventName] = useState('')
