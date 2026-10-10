@@ -32,6 +32,9 @@ const BLOOM_MS = 160
 // Share of dots that ink early, ahead of the pen.
 const EARLY_SHARE = 0.08
 
+// Longest a skipped branch waits, in pen steps, after the pen left its fork.
+const BRANCH_WAIT = 40
+
 // Branches shorter than this many cells count as retraced strokes.
 const SPUR = 24
 
@@ -150,6 +153,7 @@ function penOrder(ink: Uint8Array, cols: number, rows: number): Float64Array {
     const stack = [pick]
     seen[pick] = 1
     order[pick] = tick++
+    let last = pick
     while (stack.length) {
       const cur = stack[stack.length - 1]
       const next = nbrs(cur, sk).filter((j) => !seen[j])
@@ -183,7 +187,14 @@ function penOrder(ink: Uint8Array, cols: number, rows: number): Float64Array {
       // Smooth the heading so one-cell staircase jogs don't steer the pen.
       heading.set(best, [(bc - cc) * 0.6 + hx * 0.4, (br - cr) * 0.6 + hy * 0.4])
       seen[best] = 1
-      order[best] = tick++
+      // Walking on, each step is one tick after the last. Branching off a
+      // fork the pen already passed (after backtracking), the branch waits
+      // for the stretch just drawn from that fork, but no more than
+      // BRANCH_WAIT steps: a p's bowl still follows its descender, yet a
+      // skipped loop is never left until after the rest of the word.
+      order[best] = cur === last ? order[cur] + 1 : Math.min(tick, order[cur] + 1 + BRANCH_WAIT)
+      tick = Math.max(tick, order[best] + 1)
+      last = best
       stack.push(best)
     }
     tick += 6 // pen lift
