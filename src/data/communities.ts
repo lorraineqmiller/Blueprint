@@ -5,7 +5,7 @@
 export const COLUMBIA_BARNARD = 'columbia-barnard'
 
 export const COMMUNITIES: Record<string, { name: string }> = {
-  [COLUMBIA_BARNARD]: { name: 'Columbia & Barnard' },
+  [COLUMBIA_BARNARD]: { name: 'Columbia/Barnard' },
 }
 
 export const COMMUNITY_DOMAINS: { domain: string; communityId: string; schoolName: string }[] = [
@@ -21,4 +21,9 @@ export function matchSchoolDomain(email: string) {
 
 export function communityName(communityId: string | null): string | null {
   return communityId ? (COMMUNITIES[communityId]?.name ?? null) : null
+}
+
+// Email domains accepted for a community, for the verify-school hint.
+export function communityDomains(communityId: string): string[] {
+  return COMMUNITY_DOMAINS.filter((d) => d.communityId === communityId).map((d) => d.domain)
 }

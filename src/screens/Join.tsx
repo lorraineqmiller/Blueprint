@@ -118,7 +118,7 @@ export default function Join() {
       <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto px-6 py-6">
         <div className="space-y-5">
           <div>
-            <h2 className="font-heading text-2xl font-semibold uppercase">Join the Blueprint</h2>
+            <h2 className="font-heading text-2xl font-semibold uppercase">Become the Blueprint</h2>
             <p className="mt-1 text-sm text-neutral-600">One account, your whole closet.</p>
           </div>
           <div>
@@ -126,20 +126,20 @@ export default function Join() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Anna Yang"
-              className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+              placeholder="Your Name"
+              className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
             />
           </div>
           {isBackendEnabled && (
             <div>
               <Eyebrow className="mb-1">Username</Eyebrow>
-              <div className="flex items-center rounded-md border border-neutral-400 bg-white focus-within:border-accent-600">
+              <div className="flex items-center rounded-xl border border-neutral-400 bg-white focus-within:border-accent-600">
                 <span className="pl-4 text-neutral-500">@</span>
                 <input
                   value={username}
                   onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                  placeholder="annayang"
-                  className="w-full rounded-md bg-transparent py-3 pl-1 pr-4 outline-none"
+                  placeholder="blueprintusername"
+                  className="w-full rounded-xl bg-transparent py-3 pl-1 pr-4 outline-none"
                 />
               </div>
               {usernameHint[usernameStatus] && (
@@ -154,12 +154,9 @@ export default function Join() {
               onChange={(e) => setEmail(e.target.value)}
               type="email"
               autoComplete="email"
-              placeholder="anna@gmail.com"
-              className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+              placeholder="your@email.com"
+              className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
             />
-            <p className="mt-1 text-xs text-neutral-500">
-              Any email works. You can link your school email afterward to join your campus community.
-            </p>
           </div>
           {isBackendEnabled && (
             <div>
@@ -169,7 +166,7 @@ export default function Join() {
                 onChange={(e) => setPassword(e.target.value)}
                 type="password"
                 placeholder="At least 6 characters"
-                className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+                className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
               />
             </div>
           )}

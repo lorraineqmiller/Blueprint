@@ -8,6 +8,14 @@ import { useMyItems } from '../lib/selectors'
 import { closetImpact } from '../lib/impact'
 import { isBackendEnabled } from '../lib/supabaseClient'
 
+// "Thursday, Oct 8 · 3:42 PM"
+function dateTimeLabel(now: number): string {
+  const d = new Date(now)
+  const date = d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  return `${date} · ${time}`
+}
+
 export default function Home() {
   const nav = useNavigate()
   const user = useStore((s) => s.user)
@@ -34,7 +42,7 @@ export default function Home() {
       <div className="px-5 py-5">
         <div className="flex items-center justify-between">
           <div>
-            <Eyebrow>Friday · Before the party</Eyebrow>
+            <Eyebrow>{dateTimeLabel(now)}</Eyebrow>
             <h1 className="font-heading text-3xl font-semibold uppercase">Hey {firstName}</h1>
           </div>
           <button onClick={() => nav('/profile')}>
@@ -44,7 +52,7 @@ export default function Home() {
 
         <button
           onClick={() => nav('/closet-impact')}
-          className="grid-paper mt-5 block w-full rounded-md bg-navy p-5 text-left text-white"
+          className="grid-paper mt-5 block w-full rounded-xl bg-navy p-5 text-left text-white"
         >
           <div className="flex items-center justify-between">
             <Eyebrow className="text-white/60">Closet Impact</Eyebrow>
@@ -68,7 +76,7 @@ export default function Home() {
             </div>
             <button
               onClick={() => nav(`/fit-checks/${live.id}`)}
-              className="block w-full rounded-md border border-neutral-300 bg-white p-4 text-left"
+              className="block w-full rounded-xl border border-neutral-300 bg-white p-4 text-left"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
@@ -101,7 +109,7 @@ export default function Home() {
 
         <div className="mt-6">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="font-heading text-lg font-semibold uppercase">Nearby Closets</h2>
+            <h2 className="font-heading text-lg font-semibold uppercase">Your Friends' Closets</h2>
             <button onClick={() => nav('/closets-near-me')} className="eyebrow text-xs text-accent-600">
               See all
             </button>
@@ -109,11 +117,11 @@ export default function Home() {
           {isBackendEnabled && people.length === 0 ? (
             <button
               onClick={() => nav('/friends')}
-              className="block w-full rounded-md border border-dashed border-accent-300 bg-accent-100 p-4 text-left"
+              className="block w-full rounded-xl border border-dashed border-accent-300 bg-accent-100 p-4 text-left"
             >
               <div className="text-sm font-semibold text-accent-700">Add friends to see their closets</div>
               <p className="mt-1 text-xs text-ink">
-                Once you're connected, their lendable pieces show up here — the closer, the better.
+                Once you're connected, their lendable pieces show up here.
               </p>
             </button>
           ) : (
@@ -122,7 +130,7 @@ export default function Home() {
                 <button
                   key={item.id}
                   onClick={() => nav(`/borrow/${item.id}`)}
-                  className="w-28 shrink-0 overflow-hidden rounded-md border border-neutral-300 bg-white text-left"
+                  className="w-28 shrink-0 overflow-hidden rounded-xl border border-neutral-300 bg-white text-left"
                 >
                   <div className="relative">
                     <Photo src={item.imageUrl} alt={item.name} className="h-28 w-full" />

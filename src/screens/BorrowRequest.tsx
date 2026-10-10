@@ -78,7 +78,7 @@ export default function BorrowRequest() {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setWhen('ASAP')}
-              className={`eyebrow rounded-md border py-3 text-xs tracking-wide transition ${
+              className={`eyebrow rounded-xl border py-3 text-xs tracking-wide transition ${
                 when === 'ASAP' ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white text-ink'
               }`}
             >
@@ -86,7 +86,7 @@ export default function BorrowRequest() {
             </button>
             <button
               onClick={() => setWhen('date')}
-              className={`eyebrow rounded-md border py-3 text-xs tracking-wide transition ${
+              className={`eyebrow rounded-xl border py-3 text-xs tracking-wide transition ${
                 when === 'date' ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white text-ink'
               }`}
             >
@@ -99,7 +99,7 @@ export default function BorrowRequest() {
               min={today}
               value={customDate}
               onChange={(e) => setCustomDate(e.target.value)}
-              className="mt-2 w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+              className="mt-2 w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
             />
           )}
         </div>
@@ -111,7 +111,7 @@ export default function BorrowRequest() {
             onChange={(e) => setNote(e.target.value)}
             placeholder="Let them know what it's for and when you'll return it..."
             rows={3}
-            className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 text-sm outline-none focus:border-accent-600"
+            className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 text-sm outline-none focus:border-accent-600"
           />
         </div>
 

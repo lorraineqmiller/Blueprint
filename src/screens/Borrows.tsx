@@ -29,7 +29,7 @@ export default function Borrows() {
         <div className="mt-4 grid grid-cols-2 gap-2">
           <button
             onClick={() => setTab('lending')}
-            className={`eyebrow rounded-md border py-3 text-xs ${
+            className={`eyebrow rounded-xl border py-3 text-xs ${
               tab === 'lending' ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'
             }`}
           >
@@ -37,7 +37,7 @@ export default function Borrows() {
           </button>
           <button
             onClick={() => setTab('borrowing')}
-            className={`eyebrow rounded-md border py-3 text-xs ${
+            className={`eyebrow rounded-xl border py-3 text-xs ${
               tab === 'borrowing' ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'
             }`}
           >

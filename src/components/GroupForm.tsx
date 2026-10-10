@@ -28,7 +28,7 @@ export function GroupForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={memberIds.length ? groupName({ name: '', memberIds }, people) : 'e.g. Sat Night Crew'}
-          className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+          className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
         />
       </div>
       <div>
@@ -40,7 +40,7 @@ export function GroupForm({
               <button
                 key={p.id}
                 onClick={() => toggle(p.id)}
-                className={`flex w-full items-center gap-3 rounded-md border bg-white p-2.5 text-left ${
+                className={`flex w-full items-center gap-3 rounded-xl border bg-white p-2.5 text-left ${
                   on ? 'border-accent-600' : 'border-neutral-300'
                 }`}
               >

@@ -31,7 +31,7 @@ export default function Closet() {
           </div>
           <button
             onClick={() => nav('/closet/add')}
-            className="flex h-10 w-10 items-center justify-center rounded-md bg-accent-600 text-xl text-white"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-600 text-xl text-white"
           >
             +
           </button>
@@ -42,7 +42,7 @@ export default function Closet() {
             <button
               key={c}
               onClick={() => setFilter(c)}
-              className={`eyebrow rounded-md border py-2 text-[11px] tracking-wide ${
+              className={`eyebrow rounded-xl border py-2 text-[11px] tracking-wide ${
                 filter === c ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'
               }`}
             >
@@ -53,7 +53,7 @@ export default function Closet() {
 
         <button
           onClick={() => nav('/closet-impact')}
-          className="mt-4 block w-full rounded-md border border-accent-300 bg-accent-100 p-4 text-left"
+          className="mt-4 block w-full rounded-xl border border-accent-300 bg-accent-100 p-4 text-left"
         >
           <span className="font-heading text-2xl font-semibold text-accent-700">{reworn}%</span>{' '}
           <span className="text-sm text-ink">of your closet got re-worn this semester. See the full impact report.</span>
@@ -65,7 +65,7 @@ export default function Closet() {
             <button
               key={item.id}
               onClick={() => nav(`/closet/${item.id}`)}
-              className="overflow-hidden rounded-md border border-neutral-300 bg-white text-left"
+              className="overflow-hidden rounded-xl border border-neutral-300 bg-white text-left"
             >
               <div className="relative">
                 <Photo src={item.imageUrl} alt={item.name} className="h-40 w-full" />

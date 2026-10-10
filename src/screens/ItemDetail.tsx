@@ -67,7 +67,7 @@ export default function ItemDetail() {
               <button
                 key={String(priv)}
                 onClick={() => setItemPrivate(item.id, priv)}
-                className={`eyebrow rounded-md border py-3 text-xs tracking-wide ${
+                className={`eyebrow rounded-xl border py-3 text-xs tracking-wide ${
                   item.isPrivate === priv ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'
                 }`}
               >

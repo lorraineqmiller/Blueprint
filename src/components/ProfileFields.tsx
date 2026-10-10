@@ -15,7 +15,7 @@ export function VisibilityToggle() {
           <button
             key={String(pub)}
             onClick={() => setPublic(pub)}
-            className={`eyebrow rounded-md border py-4 text-xs tracking-wide ${
+            className={`eyebrow rounded-xl border py-4 text-xs tracking-wide ${
               isPublic === pub ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'
             }`}
           >
@@ -23,14 +23,12 @@ export function VisibilityToggle() {
           </button>
         ))}
       </div>
-      <ul className="mt-2 space-y-1 text-xs text-neutral-600">
-        <li>• Either way, only friends can browse your closet and ask to borrow.</li>
-        {isPublic ? (
-          <li>• Public: anyone on Blueprint can see and vote on fit checks you post publicly.</li>
-        ) : (
-          <li>• Private: your fit checks and votes stay between you and your friends.</li>
-        )}
-      </ul>
+      <p className="mt-2 text-xs text-neutral-600">
+        {isPublic
+          ? 'Public: anyone on Blueprint can see and vote on fit checks you post publicly.'
+          : 'Private: your fit checks and votes stay between you and your friends.'}{' '}
+        Either way, only friends can browse your closet and ask to borrow.
+      </p>
     </div>
   )
 }
@@ -58,7 +56,7 @@ export function PhoneField({ value, onChange, onBlur }: { value: string; onChang
         autoComplete="tel"
         inputMode="tel"
         placeholder="(212) 555-0134"
-        className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+        className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
       />
       <p className={`mt-1 text-xs ${isPhoneValid(value) ? 'text-neutral-500' : 'text-red-600'}`}>
         {isPhoneValid(value) ? 'Only you can see this. Later it’ll help friends from your contacts find you.' : 'Enter a full phone number.'}
@@ -74,7 +72,7 @@ export function SchoolCommunityRow() {
   return (
     <button
       onClick={() => nav('/verify-school')}
-      className={`flex w-full items-center justify-between rounded-md border p-4 text-left ${
+      className={`flex w-full items-center justify-between rounded-xl border p-4 text-left ${
         community ? 'border-neutral-300 bg-white' : 'border-dashed border-accent-300 bg-accent-100'
       }`}
     >
@@ -89,7 +87,7 @@ export function SchoolCommunityRow() {
         ) : (
           <>
             <div className="text-sm font-semibold text-accent-700">Join your school community</div>
-            <p className="text-xs text-ink">Verify a Columbia or Barnard email to find classmates.</p>
+            <p className="text-xs text-ink">Pick your school and verify your school email.</p>
           </>
         )}
       </div>

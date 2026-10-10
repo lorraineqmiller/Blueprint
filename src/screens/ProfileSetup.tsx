@@ -7,7 +7,7 @@ import { isLocationComplete, LocationPicker, type LocationValue } from '../compo
 import { isPhoneValid, PhoneField, SchoolCommunityRow, VisibilityToggle } from '../components/ProfileFields'
 import { useStore } from '../store'
 
-// Kept short on purpose: photo, where you live, who sees what. Bio and the
+// Kept short on purpose: school, photo, where you live, who sees what. Bio and the
 // rest can wait for Edit Profile. Each field saves as soon as it's valid,
 // so a detour to verify a school email doesn't lose anything.
 export default function ProfileSetup() {
@@ -23,24 +23,30 @@ export default function ProfileSetup() {
   })
   const [phone, setPhoneDraft] = useState(user.phone)
 
-  const canFinish = isLocationComplete(location) && isPhoneValid(phone)
+  // Where you live is optional — a half-finished off-campus address just
+  // doesn't get saved rather than blocking setup.
+  const canFinish = isPhoneValid(phone)
 
   return (
     <Screen withNav={false} scroll={false}>
       <TopBar title="Profile Setup" onBack={() => nav(-1)} />
       <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto px-6 py-6">
         <div className="space-y-6">
+          <div>
+            <Eyebrow className="mb-2">School community · optional</Eyebrow>
+            <SchoolCommunityRow />
+          </div>
+
           <div className="flex items-center gap-4">
             <AvatarUpload />
             <div className="min-w-0">
               <div className="font-heading truncate text-lg font-semibold">{user.name}</div>
               <div className="truncate text-sm text-neutral-600">{user.handle}</div>
-              <p className="text-xs text-neutral-500">Tap to add a photo</p>
             </div>
           </div>
 
           <div>
-            <Eyebrow className="mb-1">Where you live</Eyebrow>
+            <Eyebrow className="mb-1">Where you live · optional</Eyebrow>
             <LocationPicker
               value={location}
               onChange={(v) => {
@@ -48,9 +54,11 @@ export default function ProfileSetup() {
                 if (isLocationComplete(v)) setLocation({ buildingId: v.buildingId, offCampus: v.offCampus }, v.offCampusAddress)
               }}
             />
-            <p className="mt-2 text-xs text-neutral-600">
-              Friends see your building (or just "off campus") and how many minutes away you are — nothing more precise.
-            </p>
+            {user.communityId && (
+              <p className="mt-2 text-xs text-neutral-600">
+                Friends see your building (or just "off campus") — never your exact address.
+              </p>
+            )}
           </div>
 
           <PhoneField
@@ -58,11 +66,6 @@ export default function ProfileSetup() {
             onChange={setPhoneDraft}
             onBlur={() => isPhoneValid(phone) && phone !== user.phone && setPhone(phone)}
           />
-
-          <div>
-            <Eyebrow className="mb-2">School community · optional</Eyebrow>
-            <SchoolCommunityRow />
-          </div>
 
           <div>
             <Eyebrow className="mb-2">Profile visibility</Eyebrow>
@@ -78,7 +81,7 @@ export default function ProfileSetup() {
             nav('/home')
           }}
         >
-          Enter The Blueprint
+          Finish setup
         </PrimaryButton>
       </div>
     </Screen>

@@ -61,7 +61,7 @@ export function ItemPicker({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search pieces"
-        className="w-full rounded-md border border-neutral-400 bg-white px-3 py-2 text-sm outline-none focus:border-accent-600"
+        className="w-full rounded-xl border border-neutral-400 bg-white px-3 py-2 text-sm outline-none focus:border-accent-600"
       />
       <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
         {CATEGORIES.map((c) => (
@@ -83,7 +83,7 @@ export function ItemPicker({
             <button
               key={item.id}
               onClick={() => onToggle(item.id)}
-              className={`relative overflow-hidden rounded-md border-2 bg-white text-left ${on ? 'border-accent-600' : 'border-transparent'}`}
+              className={`relative overflow-hidden rounded-xl border-2 bg-white text-left ${on ? 'border-accent-600' : 'border-transparent'}`}
             >
               <Photo src={item.imageUrl} alt={item.name} className="h-20 w-full" />
               <div className="truncate px-1 py-0.5 text-[10px] font-semibold uppercase">{item.name}</div>

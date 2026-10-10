@@ -56,7 +56,7 @@ export default function EditProfile() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+              className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
             />
           </div>
 
@@ -72,7 +72,7 @@ export default function EditProfile() {
               onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX))}
               rows={3}
               placeholder="What's your style? What are you always lending out?"
-              className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 text-sm outline-none focus:border-accent-600"
+              className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 text-sm outline-none focus:border-accent-600"
             />
           </div>
 

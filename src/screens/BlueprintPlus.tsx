@@ -6,7 +6,7 @@ import { useStore } from '../store'
 const perks = [
   'Unlimited fit checks per week',
   'Full closet impact history, not just this semester',
-  'Priority placement in Closets Near Me',
+  "Priority placement in your friends' feeds",
   'Early access to new features',
 ]
 

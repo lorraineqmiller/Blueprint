@@ -45,7 +45,7 @@ export default function FriendCloset() {
               key={item.id}
               disabled={!item.lendable}
               onClick={() => nav(`/borrow/${item.id}`)}
-              className="overflow-hidden rounded-md border border-neutral-300 bg-white text-left"
+              className="overflow-hidden rounded-xl border border-neutral-300 bg-white text-left"
             >
               <div className="relative">
                 <Photo src={item.imageUrl} alt={item.name} className="h-36 w-full" />

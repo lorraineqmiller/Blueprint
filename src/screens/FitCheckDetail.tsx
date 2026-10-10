@@ -88,7 +88,7 @@ export default function FitCheckDetail() {
                     key={o.id}
                     disabled={!open}
                     onClick={() => castVote(fc.id, o.id)}
-                    className={`overflow-hidden rounded-md border-2 bg-white text-left ${
+                    className={`overflow-hidden rounded-xl border-2 bg-white text-left ${
                       mine || winning ? 'border-accent-600' : 'border-neutral-300'
                     }`}
                   >
@@ -157,7 +157,7 @@ export default function FitCheckDetail() {
                           decideFitCheck(fc.id, { suggestionId: sg.id })
                           nav(`/fit-checks/${fc.id}/confirmed`)
                         }}
-                        className="eyebrow mt-3 w-full rounded-md bg-accent-700 py-2.5 text-xs text-white"
+                        className="eyebrow mt-3 w-full rounded-xl bg-accent-700 py-2.5 text-xs text-white"
                       >
                         Go with this
                       </button>
@@ -203,7 +203,7 @@ export default function FitCheckDetail() {
                 }
               }}
               placeholder="Say something..."
-              className="flex-1 rounded-md border border-neutral-400 bg-white px-3 py-2 text-sm outline-none focus:border-accent-600"
+              className="flex-1 rounded-xl border border-neutral-400 bg-white px-3 py-2 text-sm outline-none focus:border-accent-600"
             />
             <button
               onClick={() => {
@@ -211,7 +211,7 @@ export default function FitCheckDetail() {
                 addComment(fc.id, comment.trim())
                 setComment('')
               }}
-              className="eyebrow rounded-md bg-accent-600 px-4 text-xs text-white"
+              className="eyebrow rounded-xl bg-accent-600 px-4 text-xs text-white"
             >
               Send
             </button>

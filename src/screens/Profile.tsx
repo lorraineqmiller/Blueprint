@@ -45,14 +45,14 @@ export default function Profile() {
         {user.bio && <p className="mt-3 text-sm text-ink">{user.bio}</p>}
         <button
           onClick={() => nav('/profile/edit')}
-          className="eyebrow mt-3 w-full rounded-md border border-neutral-400 bg-white py-2.5 text-center text-xs tracking-wide text-ink"
+          className="eyebrow mt-3 w-full rounded-xl border border-neutral-400 bg-white py-2.5 text-center text-xs tracking-wide text-ink"
         >
           Edit profile
         </button>
         {!community && (
           <button
             onClick={() => nav('/verify-school')}
-            className="mt-3 block w-full rounded-md border border-dashed border-accent-300 bg-accent-100 p-3 text-left"
+            className="mt-3 block w-full rounded-xl border border-dashed border-accent-300 bg-accent-100 p-3 text-left"
           >
             <div className="text-sm font-semibold text-accent-700">Join your school community</div>
             <p className="text-xs text-ink">Verify your Columbia or Barnard email to find classmates.</p>
@@ -79,7 +79,7 @@ export default function Profile() {
 
         <button
           onClick={() => nav('/closet-impact')}
-          className="mt-4 flex w-full items-center justify-between rounded-md border border-accent-300 bg-accent-100 p-4 text-left"
+          className="mt-4 flex w-full items-center justify-between rounded-xl border border-accent-300 bg-accent-100 p-4 text-left"
         >
           <div>
             <span className="font-heading text-lg font-semibold text-accent-700">{impact.co2Kg} kg avoided</span>
@@ -90,7 +90,7 @@ export default function Profile() {
 
         <button
           onClick={() => nav('/plus')}
-          className="grid-paper mt-4 block w-full rounded-md bg-navy p-5 text-left text-white"
+          className="grid-paper mt-4 block w-full rounded-xl bg-navy p-5 text-left text-white"
         >
           <div className="font-heading text-lg font-semibold uppercase">Blueprint Plus</div>
           <p className="mt-1 text-sm text-white/70">
@@ -106,7 +106,7 @@ export default function Profile() {
         </div>
         <div className="mt-2 grid grid-cols-3 gap-3">
           {recentlyAdded.map((item) => (
-            <button key={item.id} onClick={() => nav(`/closet/${item.id}`)} className="overflow-hidden rounded-md border border-neutral-300 bg-white text-left">
+            <button key={item.id} onClick={() => nav(`/closet/${item.id}`)} className="overflow-hidden rounded-xl border border-neutral-300 bg-white text-left">
               <Photo src={item.imageUrl} alt={item.name} className="h-24 w-full" />
               <div className="truncate px-2 py-1 text-[11px] font-semibold uppercase">{item.name}</div>
             </button>

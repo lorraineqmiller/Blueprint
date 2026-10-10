@@ -7,7 +7,7 @@ const steps = [
   {
     eyebrow: 'Step 1',
     title: 'Digitize your closet',
-    body: 'Snap photos or connect your Shop and Gmail receipts — Blueprint builds the piece cards for you.',
+    body: 'Snap a photo of each piece to add it to your closet.',
   },
   {
     eyebrow: 'Step 2',
@@ -17,7 +17,7 @@ const steps = [
   {
     eyebrow: 'Step 3',
     title: 'Share it, borrow it',
-    body: 'Post a fit check to your group chat, vote live, and borrow pieces from friends nearby.',
+    body: 'Post a fit check to your group chat, vote live, and borrow pieces from your friends.',
   },
 ]
 

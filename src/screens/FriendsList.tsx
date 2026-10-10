@@ -83,13 +83,13 @@ export default function FriendsList() {
                       <div className="flex shrink-0 gap-2">
                         <button
                           onClick={() => respondToFriendRequest(p.id, 'accepted')}
-                          className="eyebrow rounded-md bg-accent-700 px-3 py-2 text-xs text-white"
+                          className="eyebrow rounded-xl bg-accent-700 px-3 py-2 text-xs text-white"
                         >
                           Accept
                         </button>
                         <button
                           onClick={() => respondToFriendRequest(p.id, 'declined')}
-                          className="eyebrow rounded-md border border-neutral-400 px-3 py-2 text-xs text-ink"
+                          className="eyebrow rounded-xl border border-neutral-400 px-3 py-2 text-xs text-ink"
                         >
                           Decline
                         </button>
@@ -106,7 +106,7 @@ export default function FriendsList() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name or @username"
-                className="mt-2 w-full rounded-md border border-neutral-400 bg-white px-4 py-2.5 text-sm outline-none focus:border-accent-600"
+                className="mt-2 w-full rounded-xl border border-neutral-400 bg-white px-4 py-2.5 text-sm outline-none focus:border-accent-600"
               />
               {!query && (
                 <p className="mt-2 text-xs text-neutral-600">
@@ -116,10 +116,10 @@ export default function FriendsList() {
               {!query && !community && (
                 <button
                   onClick={() => nav('/verify-school')}
-                  className="mt-2 block w-full rounded-md border border-dashed border-accent-300 bg-accent-100 p-3 text-left"
+                  className="mt-2 block w-full rounded-xl border border-dashed border-accent-300 bg-accent-100 p-3 text-left"
                 >
                   <div className="text-sm font-semibold text-accent-700">Verify your school email</div>
-                  <p className="text-xs text-ink">Join the Columbia & Barnard community to see classmates first.</p>
+                  <p className="text-xs text-ink">Join the Columbia/Barnard community to see classmates first.</p>
                 </button>
               )}
               <div className="mt-2 space-y-2">
@@ -141,7 +141,7 @@ export default function FriendsList() {
                       <button
                         disabled={pending}
                         onClick={() => sendFriendRequest(p.id)}
-                        className="eyebrow shrink-0 rounded-md border border-accent-600 px-3 py-2 text-xs text-accent-600 disabled:border-neutral-400 disabled:text-neutral-500"
+                        className="eyebrow shrink-0 rounded-xl border border-accent-600 px-3 py-2 text-xs text-accent-600 disabled:border-neutral-400 disabled:text-neutral-500"
                       >
                         {pending ? 'Requested' : 'Add'}
                       </button>

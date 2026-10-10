@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import { Dropdown } from './ui'
 import { geocodeAddress } from '../lib/geocode'
 import type { Location, OffCampusAddress } from '../types'
 
@@ -9,16 +11,22 @@ export interface LocationValue extends Location {
 
 const OFF_CAMPUS = '__off_campus__'
 
-// Residence-hall dropdown (grouped Columbia / Barnard, from the buildings
+// Residence-hall dropdown (grouped Barnard / Columbia, from the buildings
 // table) plus an off-campus option that geocodes a typed address. The
 // address itself stays private — friends only ever see "Off campus" and a
 // rounded walking distance.
+//
+// Locked until you've verified a school email: the building list is your
+// community's, so there's nothing to pick from before then.
 export function LocationPicker({ value, onChange }: { value: LocationValue; onChange: (v: LocationValue) => void }) {
-  const buildings = useStore((s) => s.buildings)
+  const nav = useNavigate()
+  const communityId = useStore((s) => s.user.communityId)
+  const buildings = useStore((s) => s.buildings).filter((b) => b.communityId === communityId)
   const [addressDraft, setAddressDraft] = useState(value.offCampusAddress?.address ?? '')
   const [lookup, setLookup] = useState<'idle' | 'looking' | 'not_found' | 'error'>('idle')
 
-  const schools = [...new Set(buildings.map((b) => b.school))]
+  // Alphabetical, so Barnard sits above Columbia.
+  const schools = [...new Set(buildings.map((b) => b.school))].sort((a, b) => a.localeCompare(b))
   const selectValue = value.buildingId ?? (value.offCampus ? OFF_CAMPUS : '')
 
   async function findAddress() {
@@ -38,37 +46,37 @@ export function LocationPicker({ value, onChange }: { value: LocationValue; onCh
     }
   }
 
+  if (!communityId) {
+    return (
+      <button
+        onClick={() => nav('/verify-school')}
+        className="w-full rounded-xl border border-dashed border-neutral-400 bg-white p-4 text-left"
+      >
+        <div className="text-sm font-semibold">Verify your school email first</div>
+        <p className="text-xs text-neutral-600">Building options come from your school, so you can add this once you've joined.</p>
+      </button>
+    )
+  }
+
   return (
     <div>
-      <select
+      <Dropdown
         value={selectValue}
-        onChange={(e) => {
-          const v = e.target.value
+        placeholder="Choose your building"
+        onChange={(v) => {
           if (v === OFF_CAMPUS) onChange({ buildingId: null, offCampus: true, offCampusAddress: value.offCampusAddress })
           else onChange({ buildingId: v || null, offCampus: false, offCampusAddress: null })
         }}
-        className="w-full appearance-none rounded-md border border-neutral-400 bg-white bg-[length:12px] bg-[right_1rem_center] bg-no-repeat px-4 py-3 pr-10 outline-none focus:border-accent-600"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%231d1f20' stroke-width='1.5'/%3E%3C/svg%3E\")",
-        }}
-      >
-        <option value="">Choose your building</option>
-        {schools.map((school) => (
-          <optgroup key={school} label={school}>
-            {buildings
-              .filter((b) => b.school === school)
-              .map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-          </optgroup>
-        ))}
-        <optgroup label="Elsewhere">
-          <option value={OFF_CAMPUS}>Off campus — enter an address</option>
-        </optgroup>
-      </select>
+        groups={[
+          // Optional, so once something's picked there's a way back out.
+          ...(selectValue ? [{ options: [{ value: '', label: 'Skip for now' }] }] : []),
+          ...schools.map((school) => ({
+            label: school,
+            options: buildings.filter((b) => b.school === school).map((b) => ({ value: b.id, label: b.name })),
+          })),
+          { label: 'Elsewhere', options: [{ value: OFF_CAMPUS, label: 'Off campus — enter an address' }] },
+        ]}
+      />
 
       {value.offCampus && (
         <div className="mt-2">
@@ -81,12 +89,12 @@ export function LocationPicker({ value, onChange }: { value: LocationValue; onCh
               }}
               onKeyDown={(e) => e.key === 'Enter' && findAddress()}
               placeholder="e.g. 523 W 112th St"
-              className="min-w-0 flex-1 rounded-md border border-neutral-400 bg-white px-4 py-3 text-sm outline-none focus:border-accent-600"
+              className="min-w-0 flex-1 rounded-xl border border-neutral-400 bg-white px-4 py-3 text-sm outline-none focus:border-accent-600"
             />
             <button
               onClick={findAddress}
               disabled={!addressDraft.trim() || lookup === 'looking'}
-              className="eyebrow shrink-0 rounded-md border border-accent-600 px-3 text-xs text-accent-600 disabled:border-neutral-300 disabled:text-neutral-400"
+              className="eyebrow shrink-0 rounded-xl border border-accent-600 px-3 text-xs text-accent-600 disabled:border-neutral-300 disabled:text-neutral-400"
             >
               {lookup === 'looking' ? 'Finding…' : 'Find'}
             </button>

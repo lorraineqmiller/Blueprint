@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Screen, TopBar } from '../components/Shell'
-import { Eyebrow, PrimaryButton } from '../components/ui'
-import { communityName, matchSchoolDomain } from '../data/communities'
+import { Dropdown, Eyebrow, PrimaryButton } from '../components/ui'
+import { COMMUNITIES, communityDomains, communityName, matchSchoolDomain } from '../data/communities'
 import type { VerifyResult } from '../lib/backendApi'
 import { useStore } from '../store'
 
@@ -25,6 +25,11 @@ export default function VerifySchool() {
   const verifySchoolCode = useStore((s) => s.verifySchoolCode)
 
   const [email, setEmail] = useState(user.pendingSchoolEmail ?? '')
+  // Pick the school first, then the email field appears for it. New schools
+  // show up here as soon as they're added to COMMUNITIES.
+  const [schoolId, setSchoolId] = useState(
+    (user.pendingSchoolEmail ? matchSchoolDomain(user.pendingSchoolEmail)?.communityId : user.communityId) ?? '',
+  )
   const [step, setStep] = useState<'email' | 'code' | 'done'>(user.pendingSchoolEmail ? 'code' : 'email')
   const [code, setCode] = useState('')
   const [demoCode, setDemoCode] = useState<string | null>(null)
@@ -32,7 +37,8 @@ export default function VerifySchool() {
   const [error, setError] = useState<string | null>(null)
 
   const community = communityName(user.communityId)
-  const emailLooksRight = Boolean(matchSchoolDomain(email))
+  const domains = schoolId ? communityDomains(schoolId) : []
+  const emailLooksRight = Boolean(schoolId) && matchSchoolDomain(email)?.communityId === schoolId
 
   async function send() {
     setBusy(true)
@@ -87,7 +93,7 @@ export default function VerifySchool() {
       <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto px-6 py-6">
         <div className="space-y-5">
           <div>
-            <h2 className="font-heading text-2xl font-semibold uppercase">Join your school</h2>
+            <h2 className="font-heading text-2xl font-semibold uppercase">Join your school community</h2>
             <p className="mt-1 text-sm text-neutral-600">
               Verify a school email to join your campus community. You'll still log in with the email you
               signed up with — this one's only used to prove you're a student.
@@ -103,17 +109,30 @@ export default function VerifySchool() {
 
           {step === 'email' && (
             <div>
+              <Eyebrow className="mb-1">School</Eyebrow>
+              <Dropdown
+                value={schoolId}
+                placeholder="Choose your school"
+                onChange={setSchoolId}
+                groups={[{ options: Object.entries(COMMUNITIES).map(([id, c]) => ({ value: id, label: c.name })) }]}
+              />
+              <p className="mt-1 text-xs text-neutral-500">More schools coming soon.</p>
+            </div>
+          )}
+
+          {step === 'email' && schoolId && (
+            <div>
               <Eyebrow className="mb-1">School email</Eyebrow>
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
                 autoComplete="off"
-                placeholder="uni@columbia.edu"
-                className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+                placeholder={`you@${domains[0] ?? 'school.edu'}`}
+                className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
               />
               <p className={`mt-1 text-xs ${/@[^@]+\.[a-z]{2,}$/i.test(email) && !emailLooksRight ? 'text-red-600' : 'text-neutral-500'}`}>
-                Columbia and Barnard emails only for now — more schools soon.
+                Use your {domains.map((d) => `@${d}`).join(' or ')} email.
               </p>
             </div>
           )}
@@ -127,7 +146,7 @@ export default function VerifySchool() {
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 placeholder="000000"
-                className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 text-center font-heading text-2xl tracking-[0.5em] outline-none focus:border-accent-600"
+                className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 text-center font-heading text-2xl tracking-[0.5em] outline-none focus:border-accent-600"
               />
               <p className="mt-1 text-xs text-neutral-500">
                 Sent to <span className="font-semibold text-ink">{email}</span>.{' '}

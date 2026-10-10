@@ -88,7 +88,7 @@ export default function FitChecks() {
           <button
             onClick={() => nav('/fit-checks/new')}
             aria-label="Start a fit check"
-            className="flex h-10 w-10 items-center justify-center rounded-md bg-accent-600 text-xl text-white"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-600 text-xl text-white"
           >
             +
           </button>
@@ -96,7 +96,7 @@ export default function FitChecks() {
 
         <button
           onClick={() => nav('/fit-checks/groups')}
-          className="mt-4 flex w-full items-center justify-between rounded-md border border-neutral-300 bg-white px-4 py-3 text-left"
+          className="mt-4 flex w-full items-center justify-between rounded-xl border border-neutral-300 bg-white px-4 py-3 text-left"
         >
           <div>
             <div className="text-sm font-semibold">Your groups</div>
@@ -119,7 +119,7 @@ export default function FitChecks() {
           {mine.map(card)}
           <button
             onClick={() => nav('/fit-checks/new')}
-            className="eyebrow block w-full rounded-md border border-dashed border-neutral-400 py-4 text-center text-sm text-accent-600"
+            className="eyebrow block w-full rounded-xl border border-dashed border-neutral-400 py-4 text-center text-sm text-accent-600"
           >
             + Start a fit check
           </button>

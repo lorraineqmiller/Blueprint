@@ -49,7 +49,7 @@ export default function Login() {
               onChange={(e) => setEmail(e.target.value)}
               type="email"
               placeholder="anna@gmail.com"
-              className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+              className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
             />
           </div>
           <div>
@@ -59,7 +59,7 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               type="password"
               placeholder="••••••••"
-              className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+              className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
             />
           </div>
           {authError && <p className="text-sm text-red-600">{authError}</p>}

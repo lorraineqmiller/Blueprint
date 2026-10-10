@@ -79,7 +79,7 @@ export default function NewFitCheck() {
             ) : (
               <button
                 onClick={() => photoInput.current?.click()}
-                className="block w-full rounded-md border border-dashed border-neutral-400 bg-white py-8 text-center"
+                className="block w-full rounded-xl border border-dashed border-neutral-400 bg-white py-8 text-center"
               >
                 <div className="text-sm font-semibold text-accent-700">Upload a fit pic</div>
                 <p className="text-xs text-neutral-600">A mirror selfie, or the whole outfit laid out</p>
@@ -103,7 +103,7 @@ export default function NewFitCheck() {
                 <button
                   key={src}
                   onClick={() => setPickFrom(src)}
-                  className={`eyebrow rounded-md border py-2 text-[11px] ${
+                  className={`eyebrow rounded-xl border py-2 text-[11px] ${
                     pickFrom === src ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'
                   }`}
                 >
@@ -153,7 +153,7 @@ export default function NewFitCheck() {
                 <button
                   key={m}
                   onClick={() => setMode(m)}
-                  className={`rounded-md border p-3 text-left ${mode === m ? 'border-accent-600 bg-accent-100' : 'border-neutral-300 bg-white'}`}
+                  className={`rounded-xl border p-3 text-left ${mode === m ? 'border-accent-600 bg-accent-100' : 'border-neutral-300 bg-white'}`}
                 >
                   <div className="text-sm font-semibold">{m === 'vote' ? 'Vote on outfits' : 'Ask for ideas'}</div>
                   <p className="text-xs text-neutral-600">
@@ -195,7 +195,7 @@ export default function NewFitCheck() {
                       setPickFrom('mine')
                       setStep('option')
                     }}
-                    className="flex h-[11.5rem] flex-col items-center justify-center rounded-md border border-dashed border-neutral-400 text-accent-600"
+                    className="flex h-[11.5rem] flex-col items-center justify-center rounded-xl border border-dashed border-neutral-400 text-accent-600"
                   >
                     <span className="text-2xl">+</span>
                     <span className="eyebrow text-[11px]">Add option {'ABCD'[options.length]}</span>
@@ -247,7 +247,7 @@ export default function NewFitCheck() {
       <button
         disabled={disabled}
         onClick={() => setAudience(value)}
-        className={`w-full rounded-md border p-3 text-left disabled:opacity-50 ${
+        className={`w-full rounded-xl border p-3 text-left disabled:opacity-50 ${
           audience === value ? 'border-accent-600 bg-accent-100' : 'border-neutral-300 bg-white'
         }`}
       >
@@ -267,7 +267,7 @@ export default function NewFitCheck() {
                   <button
                     key={g.id}
                     onClick={() => setGroupId(g.id)}
-                    className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm ${
+                    className={`flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm ${
                       groupId === g.id ? 'border-accent-600 bg-white font-semibold' : 'border-neutral-300 bg-white'
                     }`}
                   >
@@ -328,7 +328,7 @@ export default function NewFitCheck() {
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
               placeholder="Warehouse Party"
-              className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+              className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
             />
           </div>
           <div>
@@ -337,7 +337,7 @@ export default function NewFitCheck() {
               value={vibe}
               onChange={(e) => setVibe(e.target.value)}
               placeholder="Black tie optional, 70s, cozy…"
-              className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+              className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
             />
           </div>
           <div>
@@ -367,7 +367,7 @@ export default function NewFitCheck() {
               value={endInput}
               min={localInputValue(new Date())}
               onChange={(e) => setEndInput(e.target.value)}
-              className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
+              className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 outline-none focus:border-accent-600"
             />
             {endInput && !endValid && <p className="mt-1 text-xs text-red-600">Pick a time in the future.</p>}
           </div>

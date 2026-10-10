@@ -33,7 +33,7 @@ export default function FriendsClosets() {
     <Screen>
       <div className="px-5 py-5">
         <div className="flex items-center justify-between">
-          <h1 className="font-heading text-3xl font-semibold uppercase">Closets Near Me</h1>
+          <h1 className="font-heading text-3xl font-semibold uppercase">Your Friends' Closets</h1>
           {isBackendEnabled && (
             <button onClick={() => nav('/friends')} className="eyebrow text-xs text-accent-600">
               Friends
@@ -47,12 +47,12 @@ export default function FriendsClosets() {
 
         <div className="mt-4 rounded-md border border-accent-300 bg-accent-100 p-4 text-sm">
           <span className="font-heading text-2xl font-semibold text-accent-700">{lendable.length}</span>{' '}
-          pieces you could borrow from friends, closest first. Proximity is the whole unlock.
+          pieces you could borrow from friends.
         </div>
 
         {nearby.length > 0 && (
           <div className="mt-4">
-            <h2 className="font-heading text-lg font-semibold uppercase">Friends Nearby</h2>
+            <h2 className="font-heading text-lg font-semibold uppercase">Friends Close By</h2>
             <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
               {nearby.map((p) => {
                 const same = isSameBuilding(user, p)
@@ -60,7 +60,7 @@ export default function FriendsClosets() {
                   <button
                     key={p.id}
                     onClick={() => nav(`/friends/${p.id}`)}
-                    className={`flex shrink-0 flex-col items-center rounded-md border px-3 py-2 text-center ${
+                    className={`flex shrink-0 flex-col items-center rounded-xl border px-3 py-2 text-center ${
                       same ? 'border-accent-300 bg-accent-100' : 'border-neutral-300 bg-white'
                     }`}
                   >
@@ -97,7 +97,7 @@ export default function FriendsClosets() {
           {lendable.length === 0 && isBackendEnabled && people.length === 0 && (
             <button
               onClick={() => nav('/friends')}
-              className="block w-full rounded-md border border-dashed border-accent-300 bg-accent-100 p-4 text-left"
+              className="block w-full rounded-xl border border-dashed border-accent-300 bg-accent-100 p-4 text-left"
             >
               <div className="text-sm font-semibold text-accent-700">You haven't added any friends yet</div>
               <p className="mt-1 text-xs text-ink">Find people on Blueprint to start browsing lendable closets.</p>

@@ -40,7 +40,7 @@ export function FriendGroups() {
         </div>
         <button
           onClick={() => nav('/fit-checks/groups/new')}
-          className="eyebrow mt-3 block w-full rounded-md border border-dashed border-neutral-400 py-4 text-center text-sm text-accent-600"
+          className="eyebrow mt-3 block w-full rounded-xl border border-dashed border-neutral-400 py-4 text-center text-sm text-accent-600"
         >
           + New group
         </button>

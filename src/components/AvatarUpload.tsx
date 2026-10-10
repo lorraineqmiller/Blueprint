@@ -14,8 +14,8 @@ export function AvatarUpload({ className = 'h-16 w-16' }: { className?: string }
     <>
       <button onClick={() => input.current?.click()} className="relative shrink-0" aria-label="Change profile photo">
         <Avatar src={user.avatarUrl} name={user.name} className={className} />
-        <span className="eyebrow absolute -bottom-1 -right-1 rounded-full bg-accent-700 px-1.5 py-0.5 text-[8px] text-white">
-          {user.avatarUrl ? 'Edit' : 'Add'}
+        <span className="eyebrow absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-accent-700 px-1.5 py-0.5 text-[8px] text-white">
+          {user.avatarUrl ? 'Edit' : 'Add photo'}
         </span>
       </button>
       <input

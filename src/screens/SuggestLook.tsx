@@ -45,13 +45,13 @@ export default function SuggestLook() {
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button
               onClick={() => setTab('theirs')}
-              className={`eyebrow rounded-md border py-2 text-[11px] ${tab === 'theirs' ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'}`}
+              className={`eyebrow rounded-xl border py-2 text-[11px] ${tab === 'theirs' ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'}`}
             >
               {firstName}'s closet{itemIds.length ? ` · ${itemIds.length}` : ''}
             </button>
             <button
               onClick={() => setTab('mine')}
-              className={`eyebrow rounded-md border py-2 text-[11px] ${tab === 'mine' ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'}`}
+              className={`eyebrow rounded-xl border py-2 text-[11px] ${tab === 'mine' ? 'border-accent-600 bg-accent-600 text-white' : 'border-neutral-400 bg-white'}`}
             >
               Lend from yours{lendItemIds.length ? ` · ${lendItemIds.length}` : ''}
             </button>
@@ -75,7 +75,7 @@ export default function SuggestLook() {
             onChange={(e) => setNote(e.target.value)}
             rows={2}
             placeholder="the blazer over the slip dress, trust me"
-            className="w-full rounded-md border border-neutral-400 bg-white px-4 py-3 text-sm outline-none focus:border-accent-600"
+            className="w-full rounded-xl border border-neutral-400 bg-white px-4 py-3 text-sm outline-none focus:border-accent-600"
           />
         </div>
         <div className="border-t border-neutral-300 bg-paper px-5 py-4">

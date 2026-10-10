@@ -100,7 +100,7 @@ export default function ConfirmedLook() {
                     </p>
                     <button
                       onClick={() => nav(`/borrow/${item.id}`)}
-                      className="eyebrow shrink-0 rounded-md bg-accent-700 px-3 py-2 text-[11px] text-white"
+                      className="eyebrow shrink-0 rounded-xl bg-accent-700 px-3 py-2 text-[11px] text-white"
                     >
                       Request
                     </button>
