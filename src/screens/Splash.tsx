@@ -10,31 +10,46 @@ const MAJOR = 48
 const INK_CELL = 4
 const FINE_LINE = 'rgba(21, 91, 132, 0.12)'
 
-interface Column {
-  left: number
+interface FineGrid {
+  /** Pitch of the wordmark's dot grid as rendered, in px. */
   size: number
-  x: number
-  y: number
+  /** The wordmark's top-left corner within the sheet: the grid's origin. */
+  originX: number
+  originY: number
+  /** Horizontal band: the inner big-grid rows behind the wordmark. */
+  bandTop: number
+  bandHeight: number
+  /** Vertical strip: the 2nd–4th big-grid columns from the right. */
+  stripLeft: number
 }
 
-// A full-height strip of the wordmark's tiny grid, filling the 2nd and 3rd
-// big-grid columns from the right. It's scaled and offset to the rendered
-// wordmark so the two fine grids meet seamlessly where they cross.
-function useFineColumn(root: RefObject<HTMLDivElement>) {
-  const [col, setCol] = useState<Column | null>(null)
+// The wordmark's tiny grid, laid on the sheet in two strips that cross: a
+// horizontal band on the inner big-grid rows behind the wordmark, and a
+// full-height strip three big columns wide near the right edge. Both are
+// scaled and offset to the rendered wordmark so its dots sit on the lines.
+function useFineGrid(root: RefObject<HTMLDivElement>) {
+  const [grid, setGrid] = useState<FineGrid | null>(null)
   useEffect(() => {
     const el = root.current
     if (!el) return
     const measure = () => {
       const svg = el.querySelector<SVGSVGElement>('svg[role="img"]')
+      if (!svg || !svg.viewBox.baseVal.width) return setGrid(null)
       const box = el.getBoundingClientRect()
-      const columns = Math.ceil(box.width / MAJOR)
-      const left = MAJOR * (columns - 3)
-      if (!svg || !svg.viewBox.baseVal.width) return setCol(null)
       const r = svg.getBoundingClientRect()
-      const size = INK_CELL * (r.width / svg.viewBox.baseVal.width)
-      const mod = (v: number) => ((v % size) + size) % size
-      setCol({ left, size, x: mod(r.left - box.left - left), y: mod(r.top - box.top) })
+      const top = r.top - box.top
+      // The big-grid rows the wordmark spans, minus the outermost row at each
+      // end, so the band hugs the lettering.
+      const bandTop = (Math.floor(top / MAJOR) + 1) * MAJOR
+      const bandBottom = Math.max(bandTop + MAJOR, (Math.ceil((top + r.height) / MAJOR) - 1) * MAJOR)
+      setGrid({
+        size: INK_CELL * (r.width / svg.viewBox.baseVal.width),
+        originX: r.left - box.left,
+        originY: top,
+        bandTop,
+        bandHeight: bandBottom - bandTop,
+        stripLeft: MAJOR * (Math.ceil(box.width / MAJOR) - 4),
+      })
     }
     measure()
     // Re-measure on resize, and once the wordmark renders (after its font loads).
@@ -47,7 +62,27 @@ function useFineColumn(root: RefObject<HTMLDivElement>) {
       mo.disconnect()
     }
   }, [root])
-  return col
+  return grid
+}
+
+// One rectangle of fine grid, its lines continuing the wordmark's.
+function FineGridPatch({ grid, left, top, width, height }: { grid: FineGrid; left: number; top: number; width: number | string; height: number | string }) {
+  const mod = (v: number) => ((v % grid.size) + grid.size) % grid.size
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute"
+      style={{
+        left,
+        top,
+        width,
+        height,
+        backgroundImage: `linear-gradient(to right, ${FINE_LINE} 0.5px, transparent 0.5px), linear-gradient(to bottom, ${FINE_LINE} 0.5px, transparent 0.5px)`,
+        backgroundSize: `${grid.size}px ${grid.size}px`,
+        backgroundPosition: `${mod(grid.originX - left)}px ${mod(grid.originY - top)}px`,
+      }}
+    />
+  )
 }
 
 // Drafting dimension line: end ticks, a rule, and a centred mono label.
@@ -85,24 +120,25 @@ function ScaleBar({ className = '' }: { className?: string }) {
 export default function Splash() {
   const nav = useNavigate()
   const root = useRef<HTMLDivElement>(null)
-  const col = useFineColumn(root)
+  const grid = useFineGrid(root)
   // The copy waits until the wordmark has finished writing itself.
   const [written, setWritten] = useState(false)
   return (
     <Screen withNav={false} withStatusBar={false} scroll={false}>
       <div ref={root} className="graph-paper relative flex h-full flex-col overflow-hidden px-7 pb-10 pt-14">
-        {col && (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0"
-            style={{
-              left: col.left,
-              width: MAJOR * 2,
-              backgroundImage: `linear-gradient(to right, ${FINE_LINE} 0.5px, transparent 0.5px), linear-gradient(to bottom, ${FINE_LINE} 0.5px, transparent 0.5px)`,
-              backgroundSize: `${col.size}px ${col.size}px`,
-              backgroundPosition: `${col.x}px ${col.y}px`,
-            }}
-          />
+        {grid && (
+          <>
+            <FineGridPatch grid={grid} left={0} top={grid.bandTop} width="100%" height={grid.bandHeight} />
+            {/* The strip stops at the band, so the lines don't double up where they cross. */}
+            <FineGridPatch grid={grid} left={grid.stripLeft} top={0} width={MAJOR * 3} height={grid.bandTop} />
+            <FineGridPatch
+              grid={grid}
+              left={grid.stripLeft}
+              top={grid.bandTop + grid.bandHeight}
+              width={MAJOR * 3}
+              height={`calc(100% - ${grid.bandTop + grid.bandHeight}px)`}
+            />
+          </>
         )}
 
         {/* Pattern-cutting construction lines */}
@@ -117,7 +153,7 @@ export default function Splash() {
         {/* Wordmark, dimensioned like a drafting sheet. */}
         <div className="relative mt-20 -ml-2 inline-block max-w-full self-start">
           <Dimension label="1.0.0-alpha" show={written} className="absolute inset-x-2 -top-6" />
-          <DotInk text="blueprint" size={120} cell={INK_CELL} weight={1.0} slant={0.06} color="#0f4467" tints={['#526f9e', '#537fa5', '#17191f', '#155b84']} grid gridColor={FINE_LINE} gridBleed animate onWritten={() => setWritten(true)} />
+          <DotInk text="blueprint" size={120} cell={INK_CELL} weight={1.0} slant={0.06} color="#0f4467" tints={['#526f9e', '#537fa5', '#17191f', '#155b84']} animate onWritten={() => setWritten(true)} />
         </div>
 
 

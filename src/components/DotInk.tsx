@@ -33,7 +33,7 @@ const BLOOM_MS = 160
 const EARLY_SHARE = 0.08
 
 // Longest a skipped branch waits, in pen steps, after the pen left its fork.
-const BRANCH_WAIT = 40
+const BRANCH_WAIT = 20
 
 // Branches shorter than this many cells count as retraced strokes.
 const SPUR = 24
@@ -311,7 +311,6 @@ export function DotInk({
   vary = 0.3,
   grid = false,
   gridColor = 'rgba(21, 91, 132, 0.12)',
-  gridBleed = false,
   animate = false,
   className = '',
   onWritten,
@@ -334,9 +333,6 @@ export function DotInk({
   /** Draw the graph-paper gridlines the dots sit on. */
   grid?: boolean
   gridColor?: string
-  /** Run the gridlines out past the lettering, edge to edge of whatever
-   *  clips this element (they scale with the dots, so stay aligned). */
-  gridBleed?: boolean
   /** Write the word out dot by dot, following the cursive pen path. */
   animate?: boolean
   className?: string
@@ -387,23 +383,17 @@ export function DotInk({
       width={w}
       height={h}
       className={`block h-auto max-w-full ${className}`}
-      style={gridBleed ? { overflow: 'visible' } : undefined}
     >
-      {grid && (() => {
-        // Far enough either side to cross any phone or desktop frame.
-        const bleed = gridBleed ? cell * 400 : 0
-        return (
-          <g stroke={gridColor} strokeWidth="0.5">
-            {Array.from({ length: lay.cols + 1 + (bleed / cell) * 2 }, (_, i) => {
-              const x = i * cell - bleed
-              return <line key={`v${i}`} x1={x} y1={0} x2={x} y2={h} />
-            })}
-            {Array.from({ length: lay.rows + 1 }, (_, i) => (
-              <line key={`h${i}`} x1={-bleed} y1={i * cell} x2={w + bleed} y2={i * cell} />
-            ))}
-          </g>
-        )
-      })()}
+      {grid && (
+        <g stroke={gridColor} strokeWidth="0.5">
+          {Array.from({ length: lay.cols + 1 }, (_, i) => (
+            <line key={`v${i}`} x1={i * cell} y1={0} x2={i * cell} y2={h} />
+          ))}
+          {Array.from({ length: lay.rows + 1 }, (_, i) => (
+            <line key={`h${i}`} x1={0} y1={i * cell} x2={w} y2={i * cell} />
+          ))}
+        </g>
+      )}
       <g fill={color}>
         {lay.dots.map((d, i) => (
           <circle
