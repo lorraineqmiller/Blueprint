@@ -108,7 +108,7 @@ export default function Profile() {
           {recentlyAdded.map((item) => (
             <button key={item.id} onClick={() => nav(`/closet/${item.id}`)} className="overflow-hidden rounded-xl border border-neutral-300 bg-white text-left">
               <Photo src={item.imageUrl} alt={item.name} className="h-24 w-full" />
-              <div className="truncate px-2 py-1 text-[11px] font-semibold uppercase">{item.name}</div>
+              <div className="truncate px-2 py-1 text-[11px] font-semibold">{item.name}</div>
             </button>
           ))}
         </div>

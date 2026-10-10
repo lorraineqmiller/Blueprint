@@ -74,7 +74,7 @@ export default function ConfirmedLook() {
                       </span>
                     </div>
                     <div className="px-2 py-2">
-                      <div className="truncate text-xs font-semibold uppercase">{item.name}</div>
+                      <div className="truncate text-xs font-semibold">{item.name}</div>
                       <div className="truncate text-[10px] text-neutral-600">
                         {owned ? (isMine ? 'Your closet' : 'Their closet') : owner ? `${owner.name} · ${near(owner)}` : 'A friend'}
                       </div>

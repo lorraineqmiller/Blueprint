@@ -1,30 +1,138 @@
+import { useEffect, useRef, useState } from 'react'
+import type { RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Screen } from '../components/Shell'
 import { PrimaryButton } from '../components/ui'
+import { BlueprintMark, DotInk } from '../components/DotInk'
+
+// Matches .graph-paper's major grid (index.css) and the wordmark's dot grid.
+const MAJOR = 48
+const INK_CELL = 4
+const FINE_LINE = 'rgba(21, 91, 132, 0.12)'
+
+interface Column {
+  left: number
+  size: number
+  x: number
+  y: number
+}
+
+// A full-height strip of the wordmark's tiny grid, filling the 2nd and 3rd
+// big-grid columns from the right. It's scaled and offset to the rendered
+// wordmark so the two fine grids meet seamlessly where they cross.
+function useFineColumn(root: RefObject<HTMLDivElement>) {
+  const [col, setCol] = useState<Column | null>(null)
+  useEffect(() => {
+    const el = root.current
+    if (!el) return
+    const measure = () => {
+      const svg = el.querySelector<SVGSVGElement>('svg[role="img"]')
+      const box = el.getBoundingClientRect()
+      const columns = Math.ceil(box.width / MAJOR)
+      const left = MAJOR * (columns - 3)
+      if (!svg || !svg.viewBox.baseVal.width) return setCol(null)
+      const r = svg.getBoundingClientRect()
+      const size = INK_CELL * (r.width / svg.viewBox.baseVal.width)
+      const mod = (v: number) => ((v % size) + size) % size
+      setCol({ left, size, x: mod(r.left - box.left - left), y: mod(r.top - box.top) })
+    }
+    measure()
+    // Re-measure on resize, and once the wordmark renders (after its font loads).
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    const mo = new MutationObserver(measure)
+    mo.observe(el, { childList: true, subtree: true })
+    return () => {
+      ro.disconnect()
+      mo.disconnect()
+    }
+  }, [root])
+  return col
+}
+
+// Drafting dimension line: end ticks, a rule, and a centred mono label.
+// Hidden until `show`, then drafts itself in: the label fades up, the rules
+// extend outward from it, and the end ticks land last. Delays are relative
+// to `show` turning on (Splash flips it when the wordmark finishes), timed
+// to start once the buttons below have faded in.
+function Dimension({ label, show, className = '' }: { label: string; show: boolean; className?: string }) {
+  const at = (cls: string) => (show ? cls : 'invisible')
+  return (
+    <div aria-hidden className={`flex items-center gap-1.5 text-ink/70 ${className}`}>
+      <span className={`h-2.5 w-px bg-current ${at('fade-in [animation-delay:3500ms] [animation-duration:200ms]')}`} />
+      <span className={`h-px flex-1 origin-right bg-current ${at('extend-x [animation-delay:2950ms]')}`} />
+      <span className={`eyebrow whitespace-nowrap text-[8px] ${at('fade-in [animation-delay:2800ms] [animation-duration:300ms]')}`}>{label}</span>
+      <span className={`h-px flex-1 origin-left bg-current ${at('extend-x [animation-delay:2950ms]')}`} />
+      <span className={`h-2.5 w-px bg-current ${at('fade-in [animation-delay:3500ms] [animation-duration:200ms]')}`} />
+    </div>
+  )
+}
+
+// Vertical scale bar, alternating filled and open blocks.
+function ScaleBar({ className = '' }: { className?: string }) {
+  return (
+    <div aria-hidden className={`pointer-events-none flex flex-col items-center gap-1.5 ${className}`}>
+      <div className="flex flex-col border border-archive/70">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <span key={i} className={`h-3 w-1.5 ${i % 2 ? 'bg-paper' : 'bg-archive/70'}`} />
+        ))}
+      </div>
+      <span className="eyebrow text-[7px] text-archive [writing-mode:vertical-rl]">Scale bar</span>
+    </div>
+  )
+}
 
 export default function Splash() {
   const nav = useNavigate()
+  const root = useRef<HTMLDivElement>(null)
+  const col = useFineColumn(root)
+  // The copy waits until the wordmark has finished writing itself.
+  const [written, setWritten] = useState(false)
   return (
     <Screen withNav={false} withStatusBar={false} scroll={false}>
-      <div className="grid-paper flex h-full flex-col items-center justify-center bg-navy px-8 text-center text-white">
-        <div className="mb-8 flex h-16 w-16 items-center justify-center border border-white/40 font-heading text-2xl font-semibold">
-          B
+      <div ref={root} className="graph-paper relative flex h-full flex-col overflow-hidden px-7 pb-10 pt-14">
+        {col && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0"
+            style={{
+              left: col.left,
+              width: MAJOR * 2,
+              backgroundImage: `linear-gradient(to right, ${FINE_LINE} 0.5px, transparent 0.5px), linear-gradient(to bottom, ${FINE_LINE} 0.5px, transparent 0.5px)`,
+              backgroundSize: `${col.size}px ${col.size}px`,
+              backgroundPosition: `${col.x}px ${col.y}px`,
+            }}
+          />
+        )}
+
+        {/* Pattern-cutting construction lines */}
+        <svg className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100" aria-hidden>
+          <g stroke="rgba(21,91,132,0.18)" strokeWidth="0.15" fill="none">
+            <path d="M-10 70 L30 30 L70 70" />
+            <path d="M60 -5 L100 35" />
+          </g>
+        </svg>
+
+
+        {/* Wordmark, dimensioned like a drafting sheet. */}
+        <div className="relative mt-20 -ml-2 inline-block max-w-full self-start">
+          <Dimension label="1.0.0-alpha" show={written} className="absolute inset-x-2 -top-6" />
+          <DotInk text="blueprint" size={120} cell={INK_CELL} weight={1.0} slant={0.06} color="#0f4467" tints={['#526f9e', '#537fa5', '#17191f', '#155b84']} grid gridColor={FINE_LINE} gridBleed animate onWritten={() => setWritten(true)} />
         </div>
-        <h1 className="font-heading text-5xl font-semibold uppercase leading-[0.95] tracking-wide">
-          The
-          <br />
-          Blueprint
+
+
+        {/* Copy arrives once the wordmark has finished writing itself. */}
+        <h1 className={`${written ? 'slide-in-left [animation-delay:500ms]' : 'invisible'} relative mt-auto font-heading text-[44px] leading-[1.02] text-ink`}>
+          you have more to wear than you think
+          <span className="font-script text-[58px] leading-[0.6] text-blueprint"> </span>
         </h1>
-        <p className="mt-5 max-w-[280px] text-white/70">Your closet, your friends, one group chat away.</p>
-        <div className="eyebrow mt-6 rounded border border-white/30 px-4 py-2 text-[11px] tracking-widest text-white/80">
-          Wear it · Share it · Borrow it
-        </div>
-        <div className="mt-14 w-full max-w-[320px] space-y-4">
-          <PrimaryButton onClick={() => nav('/join')}>Get Started</PrimaryButton>
-          <button
-            onClick={() => nav('/login')}
-            className="eyebrow w-full py-2 text-xs tracking-wide text-white/60"
-          >
+        <p className={`${written ? 'slide-in-left [animation-delay:1300ms]' : 'invisible'} relative mt-4 max-w-[300px] text-[15px] text-neutral-700`}>
+          build and borrow to avoid buying.
+        </p>
+
+        <div className={`${written ? 'fade-in [animation-delay:2200ms]' : 'invisible'} relative mt-8 space-y-2`}>
+          <PrimaryButton onClick={() => nav('/join')}>Get started</PrimaryButton>
+          <button onClick={() => nav('/login')} className="min-h-[44px] w-full text-sm font-medium text-denim">
             I already have an account
           </button>
         </div>

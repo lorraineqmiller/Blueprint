@@ -2,21 +2,21 @@ import { useEffect, useRef, useState } from 'react'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 export function Eyebrow({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`eyebrow text-[11px] text-neutral-600 ${className}`}>{children}</div>
+  return <div className={`eyebrow text-[10px] text-archive ${className}`}>{children}</div>
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-md border border-neutral-300 bg-white ${className}`}>{children}</div>
+  return <div className={`rounded-2xl border border-neutral-300/70 bg-white ${className}`}>{children}</div>
 }
 
 export function Badge({ children, tone = 'dark' }: { children: ReactNode; tone?: 'dark' | 'accent' | 'light' }) {
   const tones = {
-    dark: 'bg-navy text-white',
-    accent: 'bg-accent-600 text-white',
-    light: 'bg-neutral-200 text-neutral-800',
+    dark: 'bg-ink text-white',
+    accent: 'bg-blueprint text-white',
+    light: 'bg-mist text-blueprint',
   }
   return (
-    <span className={`eyebrow inline-block rounded-sm px-2 py-1 text-[10px] ${tones[tone]}`}>{children}</span>
+    <span className={`eyebrow inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-[9px] ${tones[tone]}`}>{children}</span>
   )
 }
 
@@ -27,7 +27,7 @@ export function PrimaryButton({
 }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
-      className={`eyebrow w-full rounded-xl bg-accent-700 py-3 text-center text-sm tracking-wider text-white shadow-sm transition active:scale-[0.98] disabled:bg-neutral-300 disabled:text-neutral-500 disabled:shadow-none ${className}`}
+      className={`cut-corners min-h-[44px] w-full bg-blueprint py-3 text-center text-[15px] font-medium text-white transition hover:bg-accent-700 active:scale-[0.98] disabled:bg-mist disabled:text-neutral-500 ${className}`}
       {...rest}
     >
       {children}
@@ -42,7 +42,7 @@ export function SecondaryButton({
 }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
-      className={`eyebrow w-full rounded-xl border border-neutral-400 bg-white py-3 text-center text-sm tracking-wider text-ink transition active:scale-[0.98] ${className}`}
+      className={`min-h-[44px] w-full rounded-lg border border-ink/80 bg-white py-3 text-center text-[15px] font-medium text-ink transition active:scale-[0.98] ${className}`}
       {...rest}
     >
       {children}
@@ -65,10 +65,10 @@ export function SegmentedControl<T extends string>({
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`eyebrow rounded-xl border py-3 text-xs tracking-wide transition ${
+          className={`min-h-[44px] rounded-lg border py-3 text-sm font-medium transition ${
             value === o.value
-              ? 'border-accent-600 bg-accent-600 text-white'
-              : 'border-neutral-400 bg-white text-ink'
+              ? 'border-blueprint bg-blueprint text-white'
+              : 'border-neutral-300 bg-white text-ink'
           }`}
         >
           {o.label}
@@ -80,26 +80,16 @@ export function SegmentedControl<T extends string>({
 
 export function StatTile({ value, label }: { value: string; label: string }) {
   return (
-    <div className="flex-1 rounded-md border border-neutral-300 bg-white py-3 text-center">
-      <div className="font-heading text-2xl font-semibold leading-none">{value}</div>
-      <div className="eyebrow mt-1 text-[10px] text-neutral-600">{label}</div>
+    <div className="graph-paper flex-1 rounded-xl border border-powder/70 py-3 text-center">
+      <div className="text-2xl font-semibold leading-none tracking-tight text-blueprint">{value}</div>
+      <div className="eyebrow mt-1.5 text-[9px] text-archive">{label}</div>
     </div>
   )
 }
 
 export function ImagePlaceholder({ className = '', hatched = true }: { className?: string; hatched?: boolean }) {
   return (
-    <div
-      className={`bg-neutral-200 ${className}`}
-      style={
-        hatched
-          ? {
-              backgroundImage:
-                'repeating-linear-gradient(135deg, rgba(29,31,32,0.08) 0, rgba(29,31,32,0.08) 2px, transparent 2px, transparent 10px)',
-            }
-          : undefined
-      }
-    />
+    <div className={`${hatched ? 'weave' : 'bg-mist'} ${className}`} />
   )
 }
 
@@ -151,9 +141,9 @@ export function Avatar({ src, name, className = '' }: { src?: string | null; nam
   return (
     <div
       aria-label={name}
-      className={`flex shrink-0 items-center justify-center rounded-full bg-navy font-heading font-semibold text-white [container-type:size] ${className}`}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-blueprint font-medium text-white [container-type:size] ${className}`}
     >
-      <span className="text-[length:40cqh] leading-none tracking-wide">{initials(name)}</span>
+      <span className="text-[length:36cqh] leading-none tracking-wide">{initials(name)}</span>
     </div>
   )
 }
@@ -200,7 +190,7 @@ export function Dropdown({
         aria-haspopup="listbox"
         aria-expanded={open}
         className={`flex w-full items-center justify-between rounded-xl border bg-white px-4 py-3 text-left outline-none ${
-          open ? 'border-accent-600' : 'border-neutral-400'
+          open ? 'border-denim' : 'border-neutral-300'
         }`}
       >
         <span className={`truncate ${selected ? 'text-ink' : 'text-neutral-500'}`}>{selected?.label ?? placeholder}</span>

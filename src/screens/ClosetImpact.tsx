@@ -86,7 +86,7 @@ export default function ClosetImpact() {
                 <span className="font-heading w-4 text-center text-sm text-neutral-500">{idx + 1}</span>
                 <Photo src={item.imageUrl} alt={item.name} className="h-12 w-12 rounded-md" />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold uppercase">{item.name}</div>
+                  <div className="truncate text-sm font-semibold">{item.name}</div>
                   <div className="text-xs text-neutral-600">
                     {item.wearCount} wears · ${costPerWear(item).toFixed(2)} per wear
                   </div>
@@ -106,7 +106,7 @@ export default function ClosetImpact() {
               <button key={item.id} onClick={() => nav(`/closet/${item.id}`)} className="block w-full text-left">
                 <Card className="flex items-center justify-between p-3">
                   <div>
-                    <div className="text-sm font-semibold uppercase">{item.name}</div>
+                    <div className="text-sm font-semibold">{item.name}</div>
                     <div className="text-xs text-neutral-600">
                       {item.wearCount} wears · idle {Math.floor(daysSince(item.lastWornAt) / 7)} weeks
                     </div>

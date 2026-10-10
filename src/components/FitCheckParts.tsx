@@ -86,7 +86,7 @@ export function ItemPicker({
               className={`relative overflow-hidden rounded-xl border-2 bg-white text-left ${on ? 'border-accent-600' : 'border-transparent'}`}
             >
               <Photo src={item.imageUrl} alt={item.name} className="h-20 w-full" />
-              <div className="truncate px-1 py-0.5 text-[10px] font-semibold uppercase">{item.name}</div>
+              <div className="truncate px-1 py-0.5 text-[10px] font-semibold">{item.name}</div>
               {on && (
                 <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent-600 text-[11px] text-white">
                   ✓

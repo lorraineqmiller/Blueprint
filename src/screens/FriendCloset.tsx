@@ -58,7 +58,7 @@ export default function FriendCloset() {
                 </span>
               </div>
               <div className="px-2 py-2">
-                <div className="truncate text-sm font-semibold uppercase">{item.name}</div>
+                <div className="truncate text-sm font-semibold">{item.name}</div>
                 <div className="truncate text-xs text-neutral-600">
                   {item.brand} · size {item.size}
                 </div>

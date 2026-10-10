@@ -82,7 +82,7 @@ export default function FriendsClosets() {
               <Card className="flex items-center gap-3 p-3">
                 <Photo src={item.imageUrl} alt={item.name} className="h-14 w-14 shrink-0 rounded-md" />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold uppercase">{item.name}</div>
+                  <div className="truncate text-sm font-semibold">{item.name}</div>
                   <div className="truncate text-xs text-neutral-600">
                     {item.brand} · size {item.size}
                   </div>

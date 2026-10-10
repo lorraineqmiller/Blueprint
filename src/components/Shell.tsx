@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 
 function StatusBar() {
   return (
-    <div className="flex items-center justify-between px-5 pb-2 pt-3 font-heading text-[15px] font-semibold text-ink">
+    <div className="flex items-center justify-between px-5 pb-2 pt-3 text-[15px] font-semibold text-ink">
       <span>9:41</span>
       <div className="flex items-center gap-1 text-ink">
         <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor">
@@ -25,28 +25,40 @@ function StatusBar() {
   )
 }
 
+const icon = (d: string) => (
+  <svg viewBox="0 0 24 24" className="mx-auto mb-1 h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d={d} />
+  </svg>
+)
+
 const tabs = [
-  { to: '/home', label: 'Home' },
-  { to: '/closet', label: 'Closet' },
-  { to: '/fit-checks', label: 'Fit Checks' },
-  { to: '/borrows', label: 'Borrows' },
-  { to: '/profile', label: 'Profile' },
+  { to: '/home', label: 'Today', icon: icon('M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z') },
+  { to: '/closet', label: 'Closet', icon: icon('M12 6a2 2 0 1 1 2-2M12 6v2l9 7v2H3v-2l9-7') },
+  { to: '/fit-checks', label: 'Fit Checks', icon: icon('M4 5h16v11H9l-5 4z') },
+  { to: '/borrows', label: 'Borrows', icon: icon('M7 7h12l-3-3M17 17H5l3 3') },
+  { to: '/profile', label: 'Profile', icon: icon('M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c1-4 4-6 8-6s7 2 8 6') },
 ]
 
 function BottomNav() {
   return (
-    <div className="flex border-t border-neutral-300 bg-white px-2 py-3">
+    <div className="flex border-t border-neutral-300/70 bg-paper/95 px-2 pb-4 pt-2 backdrop-blur">
       {tabs.map((t) => (
         <NavLink
           key={t.to}
           to={t.to}
           className={({ isActive }) =>
-            `eyebrow flex-1 border-b-2 pb-1 text-center text-[10px] tracking-wide ${
-              isActive ? 'border-accent-600 text-accent-600' : 'border-transparent text-neutral-600'
+            `flex min-h-[44px] flex-1 flex-col items-center justify-center text-center text-[10px] font-medium ${
+              isActive ? 'text-blueprint' : 'text-neutral-500'
             }`
           }
         >
-          {t.label}
+          {({ isActive }) => (
+            <>
+              {t.icon}
+              <span>{t.label}</span>
+              <span className={`mt-1 h-1 w-1 rounded-full ${isActive ? 'bg-blueprint' : 'bg-transparent'}`} />
+            </>
+          )}
         </NavLink>
       ))}
     </div>
@@ -65,7 +77,7 @@ export function Screen({
   scroll?: boolean
 }) {
   return (
-    <div className="mx-auto flex h-[100dvh] w-full max-w-[430px] flex-col overflow-hidden bg-paper font-body text-ink shadow-2xl sm:h-[min(860px,100dvh)] sm:rounded-[2.5rem]">
+    <div className="mx-auto flex h-[100dvh] w-full max-w-[430px] flex-col overflow-hidden bg-paper grain font-body text-ink shadow-[0_30px_80px_-20px_rgba(21,91,132,0.35)] sm:h-[min(860px,100dvh)] sm:rounded-[2.5rem] sm:border sm:border-white/60">
       {withStatusBar && <StatusBar />}
       <div className={`flex flex-1 flex-col ${scroll ? 'overflow-y-auto' : 'overflow-hidden'}`}>{children}</div>
       {withNav && <BottomNav />}
@@ -83,16 +95,19 @@ export function TopBar({
   right?: ReactNode
 }) {
   return (
-    <div className="flex items-center gap-3 border-b border-neutral-300 bg-paper px-5 py-4">
+    <div className="flex items-center gap-3 border-b border-neutral-300/70 bg-paper px-5 py-4">
       {onBack && (
         <button
           onClick={onBack}
-          className="flex h-8 w-8 items-center justify-center rounded border border-neutral-400 text-ink"
+          aria-label="Back"
+          className="-ml-1 flex h-11 w-11 items-center justify-center rounded-full text-ink active:bg-mist"
         >
-          ‹
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
         </button>
       )}
-      <h1 className="font-heading flex-1 text-xl font-semibold uppercase tracking-wide">{title}</h1>
+      <h1 className="flex-1 text-xl font-semibold tracking-tight">{title}</h1>
       {right}
     </div>
   )
