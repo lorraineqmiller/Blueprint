@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 // Dotted ink: hand-lettered script snapped to graph-paper gridlines.
 //
@@ -18,6 +18,15 @@ interface Dot {
   tint: number
   /** When the pen reaches this dot, in ms from the start. */
   t: number
+}
+
+/** A traced word: grid size, plus [column, row, ms] for each dot, flattened. */
+export interface BakedInk {
+  text: string
+  cell: number
+  cols: number
+  rows: number
+  dots: number[]
 }
 
 interface Layout {
@@ -225,10 +234,14 @@ function hash(x: number, y: number): number {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967295
 }
 
-function layout(text: string, font: string, size: number, cell: number, weight: number, slant: number): Layout {
+// Render the word in the browser and trace its pen path. This is the only
+// part that depends on the browser: font rasterization differs slightly
+// between engines, so for fixed words, bake the result once (see bake.html)
+// and pass it in as `baked` so every device draws exactly the same thing.
+export function traceDotInk(text: string, font: string, size: number, cell: number, weight: number, slant: number): BakedInk {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
-  if (!ctx) return { dots: [], cols: 0, rows: 0 }
+  if (!ctx) return { text, cell, cols: 0, rows: 0, dots: [] }
   const fontSpec = `${size}px ${font}`
   ctx.font = fontSpec
   const m = ctx.measureText(text)
@@ -258,7 +271,6 @@ function layout(text: string, font: string, size: number, cell: number, weight: 
   ctx.strokeText(text, x, baseline)
 
   const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
-  const dots: Dot[] = []
   const half = Math.floor(cell / 2)
   const ink = new Uint8Array(cols * rows)
   for (let r = 0; r < rows; r++) {
@@ -266,7 +278,6 @@ function layout(text: string, font: string, size: number, cell: number, weight: 
       ink[r * cols + c] = data[((r * cell + half) * canvas.width + c * cell + half) * 4 + 3] > 110 ? 1 : 0
     }
   }
-  const inked = (c: number, r: number) => c >= 0 && r >= 0 && c < cols && r < rows && ink[r * cols + c] === 1
   const order = penOrder(ink, cols, rows)
   const last = Math.max(1, ...order)
   // Roughly constant pen speed, kept between ~1s and ~2.4s overall.
@@ -279,24 +290,36 @@ function layout(text: string, font: string, size: number, cell: number, weight: 
     if (hash(c + 211, r + 97) >= EARLY_SHARE) return t
     return Math.max(0, t - total * (0.03 + hash(r + 13, c + 151) * 0.07))
   }
+  const dots: number[] = []
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (inked(c, r)) {
-        const n = hash(c, r)
-        // Ink pools a little: tiny wander off the intersection, uneven size.
-        dots.push({
-          x: c * cell + cell / 2 + (hash(c + 91, r) - 0.5) * cell * 0.14,
-          y: r * cell + cell / 2 + (hash(c, r + 91) - 0.5) * cell * 0.14,
-          r: cell * (0.54 + n * 0.1),
-          o: 0.9 + hash(r, c) * 0.1,
-          mix: hash(c + 17, r + 29),
-          tint: hash(c + 53, r + 7),
-          t: when(c, r),
-        })
-      }
+      if (ink[r * cols + c]) dots.push(c, r, Math.round(when(c, r)))
     }
   }
-  return { dots, cols, rows }
+  return { text, cell, cols, rows, dots }
+}
+
+// Turn grid cells and times into drawable dots. Everything here comes from a
+// per-cell hash, so it's identical in every browser.
+function inflate(b: BakedInk): Layout {
+  const { cell } = b
+  const dots: Dot[] = []
+  for (let i = 0; i < b.dots.length; i += 3) {
+    const c = b.dots[i]
+    const r = b.dots[i + 1]
+    const n = hash(c, r)
+    // Ink pools a little: tiny wander off the intersection, uneven size.
+    dots.push({
+      x: c * cell + cell / 2 + (hash(c + 91, r) - 0.5) * cell * 0.14,
+      y: r * cell + cell / 2 + (hash(c, r + 91) - 0.5) * cell * 0.14,
+      r: cell * (0.54 + n * 0.1),
+      o: 0.9 + hash(r, c) * 0.1,
+      mix: hash(c + 17, r + 29),
+      tint: hash(c + 53, r + 7),
+      t: b.dots[i + 2],
+    })
+  }
+  return { dots, cols: b.cols, rows: b.rows }
 }
 
 export function DotInk({
@@ -309,13 +332,12 @@ export function DotInk({
   color = 'currentColor',
   tints = [],
   vary = 0.3,
-  grid = false,
-  gridColor = 'rgba(21, 91, 132, 0.12)',
+  baked,
   animate = false,
   className = '',
   onWritten,
 }: {
-  text: string
+  text?: string
   /** Font size used for the underlying letterforms, in px. */
   size?: number
   /** Grid pitch: one dot per cell, in px. */
@@ -330,21 +352,27 @@ export function DotInk({
   tints?: string[]
   /** Strongest drift toward a tint, 0–1. */
   vary?: number
-  /** Draw the graph-paper gridlines the dots sit on. */
-  grid?: boolean
-  gridColor?: string
+  /** A pre-traced word (from bake.html). Skips font loading and tracing,
+   *  and draws identically on every device; `text`, `size`, `cell`,
+   *  `weight`, `slant` and `font` are then ignored. */
+  baked?: BakedInk
   /** Write the word out dot by dot, following the cursive pen path. */
   animate?: boolean
   className?: string
   /** Called once the word has finished writing (right away if not animated). */
   onWritten?: () => void
 }) {
-  const [lay, setLay] = useState<Layout | null>(null)
+  const [traced, setTraced] = useState<Layout | null>(null)
+  const prebaked = useMemo(() => (baked ? inflate(baked) : null), [baked])
+  const lay = prebaked ?? traced
+  if (baked) cell = baked.cell
+  const label = baked?.text ?? text ?? ''
 
   useEffect(() => {
+    if (baked || !text) return
     let alive = true
     const fontSpec = `${size}px ${font}`
-    const run = () => alive && setLay(layout(text, font, size, cell, weight, slant))
+    const run = () => alive && setTraced(inflate(traceDotInk(text, font, size, cell, weight, slant)))
     // Wait for the webfont so we don't sample the fallback face.
     if (document.fonts?.load) {
       document.fonts.load(fontSpec, text).then(run, run)
@@ -354,7 +382,7 @@ export function DotInk({
     return () => {
       alive = false
     }
-  }, [text, font, size, cell, weight, slant])
+  }, [baked, text, font, size, cell, weight, slant])
 
   // Tell the parent when the last dot has bloomed, so it can sequence
   // what comes next. Reduced motion shows every dot at once.
@@ -370,7 +398,7 @@ export function DotInk({
 
   if (!lay) {
     // Reserve roughly the right footprint so layout doesn't jump.
-    return <span aria-label={text} role="img" className={`inline-block ${className}`} style={{ height: size * 1.4 }} />
+    return <span aria-label={label} role="img" className={`inline-block ${className}`} style={{ height: size * 1.4 }} />
   }
 
   const w = lay.cols * cell
@@ -378,22 +406,12 @@ export function DotInk({
   return (
     <svg
       role="img"
-      aria-label={text}
+      aria-label={label}
       viewBox={`0 0 ${w} ${h}`}
       width={w}
       height={h}
       className={`block h-auto max-w-full ${className}`}
     >
-      {grid && (
-        <g stroke={gridColor} strokeWidth="0.5">
-          {Array.from({ length: lay.cols + 1 }, (_, i) => (
-            <line key={`v${i}`} x1={i * cell} y1={0} x2={i * cell} y2={h} />
-          ))}
-          {Array.from({ length: lay.rows + 1 }, (_, i) => (
-            <line key={`h${i}`} x1={0} y1={i * cell} x2={w} y2={i * cell} />
-          ))}
-        </g>
-      )}
       <g fill={color}>
         {lay.dots.map((d, i) => (
           <circle
